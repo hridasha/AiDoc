@@ -224,7 +224,7 @@
                 <div class="row">
                     ${doctors.map(doctor => `
                         <div class="col-md-4 mb-4">
-                            <div class="doctor-card">
+                            <div class="doctor-card" data-doctor-id="${doctor.id}">
                                 <div class="doctor-info">
                                     <div class="doctor-name">${doctor.name}</div>
                                     <div class="doctor-specialty">${doctor.specialist}</div>
@@ -275,10 +275,11 @@
 
     async function getTimeSlots(doctorId, date) {
         try {
-            const response = await fetch(`{% url 'chatbot:doctors:get_available_time_slots' %}?doctor_id=${doctorId}&date=${date}`);
+            const response = await fetch(`{% url 'doctors:get_available_time_slots' %}?doctor_id=${doctorId}&date=${date}`);
             
             if (!response.ok) {
-                throw new Error('Failed to fetch time slots');
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to fetch time slots');
             }
 
             const data = await response.json();
@@ -294,10 +295,25 @@
             const timeSlotsContainer = document.getElementById('timeSlotsContainer');
             timeSlotsContainer.innerHTML = '';
 
+            if (data.time_slots.length === 0) {
+                timeSlotsContainer.innerHTML = `
+                    <div class="alert alert-info">
+                        No available time slots for this date. Please try another date.
+                    </div>`;
+                return;
+            }
+
             data.time_slots.forEach(slot => {
                 const button = document.createElement('button');
+                // Convert 24-hour format to 12-hour format for display
+                const time = new Date(`2000-01-01T${slot.time}`).toLocaleTimeString('en-US', {
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true
+                });
+                
                 button.className = `btn btn-outline-primary me-2 mb-2 ${slot.is_booked ? 'disabled' : ''}`;
-                button.textContent = slot.time;
+                button.textContent = time;
                 button.onclick = () => selectTimeSlot(slot.time);
                 button.disabled = slot.is_booked;
                 timeSlotsContainer.appendChild(button);
@@ -315,51 +331,50 @@
     function selectTimeSlot(time) {
         selectedTimeSlot = time;
         document.getElementById('bookButton').disabled = false;
-        document.getElementById('appointmentTime').value = time;
     }
 
     async function submitAppointment() {
-        if (!selectedTimeSlot) {
-            alert('Please select a time slot');
-            return;
-        }
-
-        const form = document.getElementById('appointmentForm');
-        const formData = new FormData(form);
-        formData.append('doctor_id', selectedDoctorId);
-        formData.append('appointment_time', selectedTimeSlot);
-
         try {
-            const response = await fetch(`{% url 'chatbot:doctors:book_appointment' %}`, {
+            if (!selectedDoctorId || !selectedTimeSlot) {
+                throw new Error('Please select a doctor and time slot first');
+            }
+
+            const formData = new FormData();
+            formData.append('doctor_id', selectedDoctorId);
+            formData.append('appointment_date', document.getElementById('appointmentDate').value);
+            formData.append('appointment_time', selectedTimeSlot);
+            formData.append('symptoms', document.getElementById('symptoms').value);
+            formData.append('message', ''); // Optional message field
+
+            const response = await fetch(`{% url 'doctors:book_appointment' %}`, {
                 method: 'POST',
-                headers: {
-                    'X-CSRFToken': '{{ csrf_token }}'
-                },
                 body: formData
             });
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                if (errorData.error) {
-                    errorMessage.textContent = errorData.error;
-                } else {
-                    errorMessage.textContent = 'Failed to book appointment. Please try again.';
-                }
-                return;
+            const data = await response.json();
+            
+            if (!data.success) {
+                throw new Error(data.error || 'Failed to book appointment');
             }
 
-            const data = await response.json();
-            errorMessage.textContent = data.message;
-            
-            // Close the modal
-            const appointmentModal = bootstrap.Modal.getInstance(document.getElementById('appointmentModal'));
-            appointmentModal.hide();
+            document.getElementById('appointmentModal').style.display = 'none';
+            document.getElementById('timeSlotsContainer').innerHTML = `
+                <div class="alert alert-success">
+                    ${data.message}
+                </div>`;
 
-            // Refresh the doctors list
-            showDoctors(data.specialist);
+            // Clear the form
+            document.getElementById('symptoms').value = '';
+            selectedDoctorId = null;
+            selectedTimeSlot = null;
+            document.getElementById('bookButton').disabled = true;
+
         } catch (error) {
             console.error('Error booking appointment:', error);
-            errorMessage.textContent = 'Failed to book appointment. Please try again.';
+            document.getElementById('timeSlotsContainer').innerHTML = `
+                <div class="alert alert-danger">
+                    ${error.message}
+                </div>`;
         }
     }
 
@@ -373,6 +388,14 @@
             e.preventDefault();
             predictDisease();
         }
+    });
+
+    // Add this to show the appointment modal when a doctor is selected
+    document.querySelectorAll('.doctor-card button').forEach(button => {
+        button.addEventListener('click', function() {
+            const doctorId = this.closest('.doctor-card').dataset.doctorId;
+            bookAppointment(doctorId);
+        });
     });
 </script>
 {% endblock %}

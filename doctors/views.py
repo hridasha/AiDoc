@@ -53,48 +53,64 @@ def get_available_time_slots(request):
         date = request.GET.get('date')
         
         if not doctor_id or not date:
-            return JsonResponse({'error': 'Doctor ID and date are required'}, status=400)
+            return JsonResponse({
+                'error': 'Doctor ID and date are required',
+                'success': False
+            }, status=400)
             
         try:
             doctor = Doctor.objects.get(id=doctor_id)
-        except Doctor.DoesNotExist:
-            return JsonResponse({'error': 'Doctor not found'}, status=404)
             
-        # Convert date string to datetime
-        date = datetime.strptime(date, '%Y-%m-%d').date()
-        
-        # Get the doctor's working hours
-        start_time = doctor.start_time
-        end_time = doctor.end_time
-        
-        # Generate time slots (every 30 minutes)
-        time_slots = []
-        current_time = datetime.combine(date, start_time)
-        end_datetime = datetime.combine(date, end_time)
-        
-        while current_time < end_datetime:
-            # Check if this time slot is already booked
-            is_booked = Appointment.objects.filter(
-                doctor=doctor,
-                appointment_date=date,
-                appointment_time=current_time.time()
-            ).exists()
+            # Convert date string to datetime
+            selected_date = datetime.strptime(date, '%Y-%m-%d').date()
             
-            time_slots.append({
-                'time': current_time.strftime('%H:%M'),
-                'is_booked': is_booked
+            # Get the doctor's working hours
+            if not doctor.start_time or not doctor.end_time:
+                return JsonResponse({
+                    'error': 'Doctor has not set working hours',
+                    'success': False
+                }, status=400)
+                
+            start_time = datetime.strptime(doctor.start_time.strftime('%H:%M'), '%H:%M').time()
+            end_time = datetime.strptime(doctor.end_time.strftime('%H:%M'), '%H:%M').time()
+            
+            # Generate time slots (every 30 minutes)
+            time_slots = []
+            current_time = datetime.combine(selected_date, start_time)
+            end_datetime = datetime.combine(selected_date, end_time)
+            
+            while current_time < end_datetime:
+                # Check if this time slot is already booked
+                is_booked = Appointment.objects.filter(
+                    doctor=doctor,
+                    appointment_date=selected_date,
+                    appointment_time=current_time.time()
+                ).exists()
+                
+                time_slots.append({
+                    'time': current_time.strftime('%H:%M'),
+                    'is_booked': is_booked
+                })
+                
+                current_time += timedelta(minutes=30)
+            
+            return JsonResponse({
+                'success': True,
+                'time_slots': time_slots
             })
             
-            current_time += timedelta(minutes=30)
-        
-        return JsonResponse({
-            'success': True,
-            'time_slots': time_slots
-        })
-        
+        except Doctor.DoesNotExist:
+            return JsonResponse({
+                'error': 'Doctor not found',
+                'success': False
+            }, status=404)
+            
     except Exception as e:
         print(f"Error getting time slots: {e}")
-        return JsonResponse({'error': str(e)}, status=500)
+        return JsonResponse({
+            'error': str(e),
+            'success': False
+        }, status=500)
 
 @login_required
 @csrf_exempt
@@ -107,22 +123,25 @@ def book_appointment(request):
             symptoms = request.POST.get('symptoms')
             message = request.POST.get('message', '')
 
-            if not doctor_id or not appointment_date or not appointment_time or not symptoms:
+            if not all([doctor_id, appointment_date, appointment_time, symptoms]):
                 return JsonResponse({
-                    'error': 'All fields are required'
+                    'error': 'All fields are required',
+                    'success': False
                 }, status=400)
 
             try:
                 doctor = Doctor.objects.get(id=doctor_id)
             except Doctor.DoesNotExist:
                 return JsonResponse({
-                    'error': 'Doctor not found'
+                    'error': 'Doctor not found',
+                    'success': False
                 }, status=404)
 
             # Check if doctor is available
             if not doctor.is_available:
                 return JsonResponse({
-                    'error': 'Doctor is currently not available for appointments'
+                    'error': 'Doctor is currently not available for appointments',
+                    'success': False
                 }, status=400)
 
             # Check if the time slot is available
@@ -132,10 +151,11 @@ def book_appointment(request):
                 appointment_time=appointment_time
             ).exists():
                 return JsonResponse({
-                    'error': 'This time slot is already booked'
+                    'error': 'This time slot is already booked',
+                    'success': False
                 }, status=400)
 
-            # Create appointment
+            # Create the appointment
             appointment = Appointment.objects.create(
                 patient=request.user.patient,
                 doctor=doctor,
@@ -147,22 +167,21 @@ def book_appointment(request):
             )
 
             return JsonResponse({
-                'message': f'Appointment booked successfully with Dr. {doctor.full_name}',
-                'appointment_id': appointment.id,
-                'appointment_date': appointment_date,
-                'appointment_time': appointment_time,
-                'doctor_name': doctor.full_name,
-                'specialist': doctor.specialization.name
+                'success': True,
+                'message': 'Appointment request sent successfully. Please wait for the doctor to confirm.',
+                'appointment_id': appointment.id
             })
 
         except Exception as e:
             print(f"Error booking appointment: {e}")
             return JsonResponse({
-                'error': 'Failed to book appointment. Please try again.'
+                'error': str(e),
+                'success': False
             }, status=500)
 
     return JsonResponse({
-        'error': 'Only POST requests are allowed'
+        'error': 'Only POST requests are allowed',
+        'success': False
     }, status=405)
 
 @login_required

@@ -2,6 +2,18 @@ from django.shortcuts import render, redirect
 from .models import Patient
 from django.contrib import messages
 from datetime import datetime
+from django.contrib.auth.decorators import login_required
+from functools import wraps
+
+def profile_required(view_func):
+    @wraps(view_func)
+    def _wrapped_view(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return redirect('user_login')
+        if not hasattr(request.user, 'profile_completed') or not request.user.profile_completed:
+            return redirect('profile_setup')
+        return view_func(request, *args, **kwargs)
+    return _wrapped_view
 
 def patient_profile_setup(request):
     if request.method == "POST":
@@ -49,13 +61,11 @@ def patient_profile_setup(request):
             
     return render(request, "patients/profile_setup.html")
 
+@login_required
+@profile_required
 def patient_dashboard(request):
-    if not request.user.profile_completed:
-        return redirect("profile_setup")
     return render(request, "patients/dashboard.html")
 
-
+@profile_required
 def patient_profile(request):
-    if not request.user.profile_completed:
-        return redirect("profile_setup")
     return render(request, "patients/profile.html")
