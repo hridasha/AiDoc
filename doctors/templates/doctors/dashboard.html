@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+
+{% block title %}Doctor Dashboard{% endblock %}
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">Doctor Dashboard</h3>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">Profile Status</h5>
+                                    <p class="card-text">{{ request.user.profile_completed|yesno:"Complete,Incomplete" }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">Total Reviews</h5>
+                                    <p class="card-text">{{ request.user.doctor.total_reviews }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">Specialization</h5>
+                                    <p class="card-text">{{ request.user.doctor.specialization.name }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title">Working Hours</h5>
+                                </div>
+                                <div class="card-body">
+                                    <p><strong>Working Days:</strong> {{ request.user.doctor.get_working_days_display }}</p>
+                                    <p><strong>Start Time:</strong> {{ request.user.doctor.start_time }}</p>
+                                    <p><strong>End Time:</strong> {{ request.user.doctor.end_time }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <a href="{% url 'doctors:profile_setup' %}" class="btn btn-primary">
+                            Edit Profile
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

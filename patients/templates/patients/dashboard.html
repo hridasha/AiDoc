@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-12">
+            <h2 class="mb-4">Patient Dashboard</h2>
+            
+            <div class="row g-4">
+                <!-- Chatbot Card -->
+                <div class="col-md-4">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">Medical Chatbot</h5>
+                            <p class="card-text">Get medical advice and disease prediction.</p>
+                            <a href="{% url 'chatbot:chat' %}" class="btn btn-primary">Start Chat</a>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Chat History Card -->
+                <div class="col-md-4">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">Chat History</h5>
+                            <p class="card-text">View your previous chat conversations.</p>
+                            <a href="{% url 'chatbot:chat_history' %}" class="btn btn-secondary">View History</a>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Profile Card -->
+                <div class="col-md-4">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">Profile</h5>
+                            <p class="card-text">View and update your personal information.</p>
+                            <a href="{% url 'patients:patient_profile' %}" class="btn btn-info">View Profile</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mt-4">
+                <!-- Recent Appointments -->
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Recent Appointments</h5>
+                        </div>
+                        <div class="card-body">
+                            <!-- Add your appointments table here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Medical Records -->
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Medical Records</h5>
+                        </div>
+                        <div class="card-body">
+                            <!-- Add your medical records table here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

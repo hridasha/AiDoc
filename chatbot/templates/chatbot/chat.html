@@ -1,0 +1,256 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<style>
+    .chat-container {
+        max-width: 800px;
+        margin: 20px auto;
+        padding: 20px;
+    }
+    .chat-box {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 20px;
+        height: 500px;
+        overflow-y: auto;
+    }
+    .message {
+        margin: 10px 0;
+        padding: 10px;
+        border-radius: 5px;
+    }
+    .user-message {
+        background: #007bff;
+        color: white;
+        margin-left: 20%;
+    }
+    .bot-message {
+        background: #e9ecef;
+        margin-right: 20%;
+    }
+    .input-group {
+        margin-top: 20px;
+    }
+    .error-message {
+        color: #dc3545;
+        margin-top: 10px;
+    }
+    .doctors-list {
+        margin-top: 30px;
+        padding: 20px;
+        background-color: #f8f9fa;
+        border-radius: 10px;
+    }
+    .doctor-card {
+        margin-bottom: 20px;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 15px;
+        transition: transform 0.2s;
+    }
+    .doctor-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .doctor-info {
+        margin-bottom: 15px;
+    }
+    .doctor-name {
+        font-size: 1.2em;
+        font-weight: bold;
+        color: #333;
+    }
+    .doctor-specialty {
+        color: #666;
+        font-size: 0.9em;
+    }
+    .doctor-experience {
+        color: #888;
+        font-size: 0.8em;
+    }
+    .doctor-rating {
+        color: #ffc107;
+        font-size: 0.9em;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="chat-container">
+        <h2 class="text-center mb-4">Disease Prediction Chatbot</h2>
+        <div class="chat-box" id="chat-box">
+            <div class="message bot-message">
+                <p>Hello! I'm here to help you understand your symptoms and suggest appropriate medical care.</p>
+                <p>Please describe your symptoms in detail, and I'll help you identify potential conditions and recommend the right specialist.</p>
+            </div>
+        </div>
+        <div class="input-group">
+            <textarea class="form-control" id="symptoms" rows="3" placeholder="Enter your symptoms here..."></textarea>
+            <button class="btn btn-primary" id="send-button" type="button">Send</button>
+        </div>
+        <div class="error-message" id="error-message"></div>
+    </div>
+
+    <div class="doctors-list" id="doctors-container">
+        <!-- Doctors will be displayed here -->
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const chatBox = document.getElementById('chat-box');
+    const symptomsInput = document.getElementById('symptoms');
+    const sendButton = document.getElementById('send-button');
+    const errorMessage = document.getElementById('error-message');
+    const doctorsContainer = document.getElementById('doctors-container');
+
+    function addMessage(message, isUser = false) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${isUser ? 'user-message' : 'bot-message'}`;
+        messageDiv.innerHTML = `<p>${message}</p>`;
+        chatBox.appendChild(messageDiv);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    async function predictDisease() {
+        const symptoms = symptomsInput.value.trim();
+        if (!symptoms) {
+            errorMessage.textContent = 'Please enter your symptoms.';
+            return;
+        }
+
+        try {
+            const response = await fetch('{% url 'chatbot:predict' %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: `symptoms=${encodeURIComponent(symptoms)}`
+            });
+
+            const data = await response.json();
+            
+            if (data.error) {
+                errorMessage.textContent = data.error;
+                return;
+            }
+
+            errorMessage.textContent = '';
+            addMessage(symptoms, true);
+            
+            const message = [
+                `Extracted Symptoms: ${data.extracted_symptoms.join(', ')}`,
+                `Predicted Disease: ${data.disease}`,
+                `Confidence: ${data.confidence}%`,
+                `Suggested Specialist: ${data.specialist}`,
+                'Please consult with a healthcare professional for proper medical advice.'
+            ].join('<br>');
+
+            addMessage(message);
+            symptomsInput.value = '';
+
+            // Show doctors with the suggested specialty
+            showDoctors(data.specialist);
+        } catch (error) {
+            errorMessage.textContent = 'An error occurred while processing your request. Please try again.';
+            console.error('Error:', error);
+        }
+    }
+
+    async function showDoctors(specialist) {
+        try {
+            const response = await fetch(`{% url 'doctors:doctor_list' %}?specialist=${encodeURIComponent(specialist)}`);
+            if (!response.ok) {
+                const errorData = await response.json();
+                if (errorData.error) {
+                    doctorsContainer.innerHTML = `<p class="text-center mt-3">${errorData.error}</p>`;
+                } else {
+                    doctorsContainer.innerHTML = '<p class="text-center mt-3">Failed to load doctors. Please try again later.</p>';
+                }
+                return;
+            }
+            
+            const doctors = await response.json();
+            
+            if (doctors.length === 0) {
+                doctorsContainer.innerHTML = '<p class="text-center mt-3">No doctors found with this specialty.</p>';
+                return;
+            }
+
+            doctorsContainer.innerHTML = `
+                <h3 class="mb-4">Available Doctors</h3>
+                <div class="row">
+                    ${doctors.map(doctor => `
+                        <div class="col-md-4 mb-4">
+                            <div class="doctor-card">
+                                <div class="doctor-info">
+                                    <div class="doctor-name">${doctor.name}</div>
+                                    <div class="doctor-specialty">${doctor.specialist}</div>
+                                    <div class="doctor-experience">${doctor.experience} years experience</div>
+                                    <div class="doctor-rating">Rating: ${doctor.rating}/5</div>
+                                </div>
+                                <button class="btn btn-primary btn-sm" onclick="bookAppointment('${doctor.id}')">
+                                    Book Appointment
+                                </button>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        } catch (error) {
+            console.error('Error fetching doctors:', error);
+            doctorsContainer.innerHTML = '<p class="text-center mt-3">Failed to load doctors. Please try again later.</p>';
+        }
+    }
+
+    async function bookAppointment(doctorId) {
+        if (!userIsAuthenticated()) {
+            window.location.href = '{% url 'user_login' %}';
+            return;
+        }
+
+        try {
+            const response = await fetch(`{% url 'doctors:book_appointment' %}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: `doctor_id=${doctorId}`
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                if (errorData.error) {
+                    errorMessage.textContent = errorData.error;
+                } else {
+                    errorMessage.textContent = 'Failed to book appointment. Please try again.';
+                }
+                return;
+            }
+
+            const data = await response.json();
+            errorMessage.textContent = data.message;
+        } catch (error) {
+            console.error('Error booking appointment:', error);
+            errorMessage.textContent = 'Failed to book appointment. Please try again.';
+        }
+    }
+
+    function userIsAuthenticated() {
+        return {{ request.user.is_authenticated|yesno:'true,false' }};
+    }
+
+    sendButton.addEventListener('click', predictDisease);
+    symptomsInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            predictDisease();
+        }
+    });
+</script>
+{% endblock %}

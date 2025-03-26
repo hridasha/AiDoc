@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-12">
+            <h2 class="mb-4">Medical Store Dashboard</h2>
+            
+            <div class="row g-4">
+                <!-- Sales Card -->
+                <div class="col-md-4">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">Today's Sales</h5>
+                            <p class="card-text">View today's sales performance.</p>
+                            <a href="{% url 'store_sales' %}" class="btn btn-primary">View Sales</a>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Inventory Card -->
+                <div class="col-md-4">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">Inventory</h5>
+                            <p class="card-text">Manage your medical inventory.</p>
+                            <a href="{% url 'store_inventory' %}" class="btn btn-secondary">Manage Inventory</a>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Orders Card -->
+                <div class="col-md-4">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">Pending Orders</h5>
+                            <p class="card-text">View and process pending orders.</p>
+                            <a href="{% url 'store_orders' %}" class="btn btn-info">View Orders</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mt-4">
+                <!-- Recent Transactions -->
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Recent Transactions</h5>
+                        </div>
+                        <div class="card-body">
+                            <!-- Add your transactions table here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Low Stock Items -->
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Low Stock Items</h5>
+                        </div>
+                        <div class="card-body">
+                            <!-- Add your low stock items table here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,104 @@
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <h2 class="mb-4">Set Up Your Profile</h2>
+            {% if not user.is_authenticated %}
+                <div class="alert alert-info">
+                    Please <a href="{% url 'login' %}?next={{ request.path }}">login</a> to access your profile setup.
+                </div>
+            {% else %}
+                <form method="POST" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    {% if form.errors %}
+                        <div class="alert alert-danger">
+                            Please correct the following errors:
+                            <ul>
+                                {% for field in form %}
+                                    {% for error in field.errors %}
+                                        <li>{{ field.label }}: {{ error }}</li>
+                                    {% endfor %}
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    {% endif %}
+
+                    <div class="mb-3">
+                        <label for="{{ form.full_name.id_for_label }}" class="form-label">Full Name <span class="text-danger">*</span></label>
+                        {{ form.full_name }}
+                    </div>
+                    <div class="mb-3">
+                        <label for="{{ form.specialization.id_for_label }}" class="form-label">Specialization <span class="text-danger">*</span></label>
+                        {{ form.specialization }}
+                    </div>
+                    <div class="mb-3">
+                        <label for="{{ form.experience.id_for_label }}" class="form-label">Years of Experience <span class="text-danger">*</span></label>
+                        {{ form.experience }}
+                    </div>
+                    <div class="mb-3">
+                        <label for="{{ form.qualification.id_for_label }}" class="form-label">Qualification <span class="text-danger">*</span></label>
+                        {{ form.qualification }}
+                    </div>
+                    <div class="mb-3">
+                        <label for="{{ form.fee.id_for_label }}" class="form-label">Consultation Fee <span class="text-danger">*</span></label>
+                        {{ form.fee }}
+                    </div>
+                    <div class="mb-3">
+                        <label for="{{ form.working_days.id_for_label }}" class="form-label">Working Days <span class="text-danger">*</span></label>
+                        {{ form.working_days }}
+                    </div>
+                    <div class="mb-3">
+                        <label for="{{ form.contact_number.id_for_label }}" class="form-label">Contact Number <span class="text-danger">*</span></label>
+                        {{ form.contact_number }}
+                    </div>
+                    <div class="mb-3">
+                        <label for="{{ form.email.id_for_label }}" class="form-label">Email <span class="text-danger">*</span></label>
+                        {{ form.email }}
+                    </div>
+                    <div class="mb-3">
+                        <label for="{{ form.start_time.id_for_label }}" class="form-label">Start Time <span class="text-danger">*</span></label>
+                        {{ form.start_time }}
+                    </div>
+                    <div class="mb-3">
+                        <label for="{{ form.end_time.id_for_label }}" class="form-label">End Time <span class="text-danger">*</span></label>
+                        {{ form.end_time }}
+                    </div>
+                    <div class="mb-3">
+                        <label for="{{ form.city.id_for_label }}" class="form-label">City</label>
+                        {{ form.city }}
+                    </div>
+                    <div class="mb-3">
+                        <label for="{{ form.state.id_for_label }}" class="form-label">State</label>
+                        {{ form.state }}
+                    </div>
+                    <div class="mb-3">
+                        <label for="{{ form.pincode.id_for_label }}" class="form-label">Pincode</label>
+                        {{ form.pincode }}
+                    </div>
+                    <div class="mb-3">
+                        <label for="{{ form.medical_license_number.id_for_label }}" class="form-label">Medical License Number <span class="text-danger">*</span></label>
+                        {{ form.medical_license_number }}
+                    </div>
+                    <div class="mb-3">
+                        <label for="{{ form.registration_date.id_for_label }}" class="form-label">Registration Date <span class="text-danger">*</span></label>
+                        {{ form.registration_date }}
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Save Profile</button>
+                </form>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
