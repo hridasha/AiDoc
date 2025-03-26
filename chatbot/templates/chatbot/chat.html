@@ -275,7 +275,7 @@
 
     async function getTimeSlots(doctorId, date) {
         try {
-            const response = await fetch(`{% url 'doctors:get_available_time_slots' %}?doctor_id=${doctorId}&date=${date}`);
+            const response = await fetch(`{% url 'chatbot:doctors:get_available_time_slots' %}?doctor_id=${doctorId}&date=${date}`);
             
             if (!response.ok) {
                 throw new Error('Failed to fetch time slots');
@@ -330,7 +330,7 @@
         formData.append('appointment_time', selectedTimeSlot);
 
         try {
-            const response = await fetch(`{% url 'doctors:book_appointment' %}`, {
+            const response = await fetch(`{% url 'chatbot:doctors:book_appointment' %}`, {
                 method: 'POST',
                 headers: {
                     'X-CSRFToken': '{{ csrf_token }}'

@@ -24,8 +24,12 @@ SECRET_KEY = 'django-insecure-z0esgktc*o9jr@)2$0ng-l&j$2$gruaawsx*p_fjt^5guu3$vw
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    'aidoc-xoht.onrender.com'
+]
 
-ALLOWED_HOSTS = ["'aidoc-xoht.onrender.com", "127.0.0.1"]
 PORT = os.environ.get("PORT", "8000")
 
 # Application definition
