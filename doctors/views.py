@@ -5,7 +5,8 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 from django.db.models import Q
 from .forms import DoctorProfileForm
-from .models import Doctor, Specialization
+from .models import Doctor, Specialization, Appointment
+from datetime import datetime, timedelta
 
 @login_required
 def doctor_profile_setup(request):
@@ -46,22 +47,160 @@ def doctor_profile_setup(request):
 
 @login_required
 @csrf_exempt
+def get_available_time_slots(request):
+    try:
+        doctor_id = request.GET.get('doctor_id')
+        date = request.GET.get('date')
+        
+        if not doctor_id or not date:
+            return JsonResponse({'error': 'Doctor ID and date are required'}, status=400)
+            
+        try:
+            doctor = Doctor.objects.get(id=doctor_id)
+        except Doctor.DoesNotExist:
+            return JsonResponse({'error': 'Doctor not found'}, status=404)
+            
+        # Convert date string to datetime
+        date = datetime.strptime(date, '%Y-%m-%d').date()
+        
+        # Get the doctor's working hours
+        start_time = doctor.start_time
+        end_time = doctor.end_time
+        
+        # Generate time slots (every 30 minutes)
+        time_slots = []
+        current_time = datetime.combine(date, start_time)
+        end_datetime = datetime.combine(date, end_time)
+        
+        while current_time < end_datetime:
+            # Check if this time slot is already booked
+            is_booked = Appointment.objects.filter(
+                doctor=doctor,
+                appointment_date=date,
+                appointment_time=current_time.time()
+            ).exists()
+            
+            time_slots.append({
+                'time': current_time.strftime('%H:%M'),
+                'is_booked': is_booked
+            })
+            
+            current_time += timedelta(minutes=30)
+        
+        return JsonResponse({
+            'success': True,
+            'time_slots': time_slots
+        })
+        
+    except Exception as e:
+        print(f"Error getting time slots: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+@login_required
+@csrf_exempt
 def book_appointment(request):
     if request.method == 'POST':
         try:
             doctor_id = request.POST.get('doctor_id')
-            if not doctor_id:
-                return JsonResponse({'error': 'Doctor ID is required'}, status=400)
+            appointment_date = request.POST.get('appointment_date')
+            appointment_time = request.POST.get('appointment_time')
+            symptoms = request.POST.get('symptoms')
+            message = request.POST.get('message', '')
 
-            doctor = Doctor.objects.get(id=doctor_id)
+            if not doctor_id or not appointment_date or not appointment_time or not symptoms:
+                return JsonResponse({
+                    'error': 'All fields are required'
+                }, status=400)
+
+            try:
+                doctor = Doctor.objects.get(id=doctor_id)
+            except Doctor.DoesNotExist:
+                return JsonResponse({
+                    'error': 'Doctor not found'
+                }, status=404)
+
+            # Check if doctor is available
+            if not doctor.is_available:
+                return JsonResponse({
+                    'error': 'Doctor is currently not available for appointments'
+                }, status=400)
+
+            # Check if the time slot is available
+            if Appointment.objects.filter(
+                doctor=doctor,
+                appointment_date=appointment_date,
+                appointment_time=appointment_time
+            ).exists():
+                return JsonResponse({
+                    'error': 'This time slot is already booked'
+                }, status=400)
+
+            # Create appointment
+            appointment = Appointment.objects.create(
+                patient=request.user.patient,
+                doctor=doctor,
+                appointment_date=appointment_date,
+                appointment_time=appointment_time,
+                symptoms=symptoms,
+                message=message,
+                status='pending'
+            )
+
             return JsonResponse({
-                'message': f'Appointment booked successfully with Dr. {doctor.full_name}'
+                'message': f'Appointment booked successfully with Dr. {doctor.full_name}',
+                'appointment_id': appointment.id,
+                'appointment_date': appointment_date,
+                'appointment_time': appointment_time,
+                'doctor_name': doctor.full_name,
+                'specialist': doctor.specialization.name
             })
-        except Doctor.DoesNotExist:
-            return JsonResponse({'error': 'Doctor not found'}, status=404)
+
         except Exception as e:
-            return JsonResponse({'error': str(e)}, status=500)
-    return JsonResponse({'error': 'Invalid request method'}, status=405)
+            print(f"Error booking appointment: {e}")
+            return JsonResponse({
+                'error': 'Failed to book appointment. Please try again.'
+            }, status=500)
+
+    return JsonResponse({
+        'error': 'Only POST requests are allowed'
+    }, status=405)
+
+@login_required
+def edit_profile(request):
+    doctor = Doctor.objects.get(user=request.user)
+    
+    if request.method == 'POST':
+        form = DoctorProfileForm(request.POST, request.FILES, instance=doctor)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Your profile has been updated successfully.')
+            return redirect('doctors:doctor_dashboard')
+    else:
+        form = DoctorProfileForm(instance=doctor)
+    
+    return render(request, 'doctors/edit_profile.html', {
+        'form': form
+    })
+
+@login_required
+def profile_setup(request):
+    if hasattr(request.user, 'doctor'):
+        return redirect('doctors:doctor_dashboard')
+
+    if request.method == 'POST':
+        form = DoctorProfileForm(request.POST, request.FILES)
+        if form.is_valid():
+            doctor = form.save(commit=False)
+            doctor.user = request.user
+            doctor.save()
+            messages.success(request, 'Your profile has been set up successfully.')
+            return redirect('doctors:doctor_dashboard')
+    else:
+        form = DoctorProfileForm()
+    
+    return render(request, 'doctors/profile_setup.html', {
+        'form': form
+    })
 
 def doctor_list(request):
     try:
@@ -103,43 +242,6 @@ def doctor_list(request):
         
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
-
-@login_required
-def edit_profile(request):
-    doctor = Doctor.objects.get(user=request.user)
-    
-    if request.method == 'POST':
-        form = DoctorProfileForm(request.POST, request.FILES, instance=doctor)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Your profile has been updated successfully.')
-            return redirect('doctors:doctor_dashboard')
-    else:
-        form = DoctorProfileForm(instance=doctor)
-    
-    return render(request, 'doctors/edit_profile.html', {
-        'form': form
-    })
-
-@login_required
-def profile_setup(request):
-    if hasattr(request.user, 'doctor'):
-        return redirect('doctors:doctor_dashboard')
-
-    if request.method == 'POST':
-        form = DoctorProfileForm(request.POST, request.FILES)
-        if form.is_valid():
-            doctor = form.save(commit=False)
-            doctor.user = request.user
-            doctor.save()
-            messages.success(request, 'Your profile has been set up successfully.')
-            return redirect('doctors:doctor_dashboard')
-    else:
-        form = DoctorProfileForm()
-    
-    return render(request, 'doctors/profile_setup.html', {
-        'form': form
-    })
 
 def doctor_dashboard(request):
     if not request.user.is_authenticated:

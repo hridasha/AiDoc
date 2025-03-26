@@ -71,6 +71,30 @@ class Doctor(models.Model):
         
         super().save(*args, **kwargs)
 
+class Appointment(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('confirmed', 'Confirmed'),
+        ('cancelled', 'Cancelled'),
+        ('completed', 'Completed')
+    ]
+
+    patient = models.ForeignKey('patients.Patient', on_delete=models.CASCADE)
+    doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE)
+    appointment_date = models.DateField()
+    appointment_time = models.TimeField()
+    symptoms = models.TextField()
+    message = models.TextField(blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Appointment with Dr. {self.doctor.full_name} on {self.appointment_date}"
+
 @receiver(post_save, sender=CustomUser)
 def create_doctor(sender, instance, created, **kwargs):
     if created and instance.role == 'doctor':

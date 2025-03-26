@@ -94,7 +94,45 @@
     </div>
 
     <div class="doctors-list" id="doctors-container">
-        <!-- Doctors will be displayed here -->
+    </div>
+
+    <!-- Appointment Modal -->
+    <div class="modal fade" id="appointmentModal" tabindex="-1" aria-labelledby="appointmentModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="appointmentModalLabel">Book Appointment</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="appointmentForm">
+                        <input type="hidden" id="doctorId" name="doctor_id">
+                        <div class="mb-3">
+                            <label for="appointmentDate" class="form-label">Date</label>
+                            <input type="date" class="form-control" id="appointmentDate" name="appointment_date" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="timeSlots" class="form-label">Available Time Slots</label>
+                            <div id="timeSlotsContainer" class="border p-3 rounded">
+                                <!-- Time slots will be populated here -->
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="symptoms" class="form-label">Symptoms</label>
+                            <textarea class="form-control" id="symptoms" name="symptoms" rows="3" required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="message" class="form-label">Message</label>
+                            <textarea class="form-control" id="message" name="message" rows="3"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" onclick="submitAppointment()" disabled id="bookButton">Book Appointment</button>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
@@ -207,20 +245,97 @@
         }
     }
 
-    async function bookAppointment(doctorId) {
+    let selectedDoctorId = null;
+    let selectedTimeSlot = null;
+
+    function bookAppointment(doctorId) {
         if (!userIsAuthenticated()) {
             window.location.href = '{% url 'user_login' %}';
             return;
         }
 
+        selectedDoctorId = doctorId;
+        const appointmentModal = new bootstrap.Modal(document.getElementById('appointmentModal'));
+        appointmentModal.show();
+
+        // Set minimum date to today
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('appointmentDate').min = today;
+
+        // Clear previous time slots
+        document.getElementById('timeSlotsContainer').innerHTML = '';
+        document.getElementById('bookButton').disabled = true;
+    }
+
+    document.getElementById('appointmentDate').addEventListener('change', function() {
+        if (selectedDoctorId && this.value) {
+            getTimeSlots(selectedDoctorId, this.value);
+        }
+    });
+
+    async function getTimeSlots(doctorId, date) {
+        try {
+            const response = await fetch(`{% url 'doctors:get_available_time_slots' %}?doctor_id=${doctorId}&date=${date}`);
+            
+            if (!response.ok) {
+                throw new Error('Failed to fetch time slots');
+            }
+
+            const data = await response.json();
+            
+            if (data.error) {
+                document.getElementById('timeSlotsContainer').innerHTML = `
+                    <div class="alert alert-danger">
+                        ${data.error}
+                    </div>`;
+                return;
+            }
+
+            const timeSlotsContainer = document.getElementById('timeSlotsContainer');
+            timeSlotsContainer.innerHTML = '';
+
+            data.time_slots.forEach(slot => {
+                const button = document.createElement('button');
+                button.className = `btn btn-outline-primary me-2 mb-2 ${slot.is_booked ? 'disabled' : ''}`;
+                button.textContent = slot.time;
+                button.onclick = () => selectTimeSlot(slot.time);
+                button.disabled = slot.is_booked;
+                timeSlotsContainer.appendChild(button);
+            });
+
+        } catch (error) {
+            console.error('Error fetching time slots:', error);
+            document.getElementById('timeSlotsContainer').innerHTML = `
+                <div class="alert alert-danger">
+                    Failed to load time slots. Please try again.
+                </div>`;
+        }
+    }
+
+    function selectTimeSlot(time) {
+        selectedTimeSlot = time;
+        document.getElementById('bookButton').disabled = false;
+        document.getElementById('appointmentTime').value = time;
+    }
+
+    async function submitAppointment() {
+        if (!selectedTimeSlot) {
+            alert('Please select a time slot');
+            return;
+        }
+
+        const form = document.getElementById('appointmentForm');
+        const formData = new FormData(form);
+        formData.append('doctor_id', selectedDoctorId);
+        formData.append('appointment_time', selectedTimeSlot);
+
         try {
             const response = await fetch(`{% url 'doctors:book_appointment' %}`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
                     'X-CSRFToken': '{{ csrf_token }}'
                 },
-                body: `doctor_id=${doctorId}`
+                body: formData
             });
 
             if (!response.ok) {
@@ -235,6 +350,13 @@
 
             const data = await response.json();
             errorMessage.textContent = data.message;
+            
+            // Close the modal
+            const appointmentModal = bootstrap.Modal.getInstance(document.getElementById('appointmentModal'));
+            appointmentModal.hide();
+
+            // Refresh the doctors list
+            showDoctors(data.specialist);
         } catch (error) {
             console.error('Error booking appointment:', error);
             errorMessage.textContent = 'Failed to book appointment. Please try again.';

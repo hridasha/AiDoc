@@ -34,9 +34,19 @@ def user_login(request):
                 print(f"Profile completed: {user.profile_completed}")
                 if user.profile_completed:
                     print("Redirecting to dashboard")
-                    return redirect(f"{user.role}_dashboard")
+                    if user.role == 'patient':
+                        return redirect('patients:dashboard')
+                    elif user.role == 'doctor':
+                        return redirect('doctors:doctor_dashboard')
+                    elif user.role == 'medical_store':
+                        return redirect('medical_store:dashboard')
                 print("Redirecting to profile setup")
-                return redirect("profile_setup")
+                if user.role == 'patient':
+                    return redirect('patients:patient_profile_setup')
+                elif user.role == 'doctor':
+                    return redirect('doctors:profile_setup')
+                elif user.role == 'medical_store':
+                    return redirect('medical_store:profile_setup')
             else:
                 print("Authentication failed")
                 form.add_error(None, "Invalid username or password")

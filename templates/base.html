@@ -24,7 +24,7 @@
                             </li>
                         {% elif user.role == 'doctor' %}
                             <li class="nav-item">
-                                <a class="nav-link" href="{% url 'doctors:dashboard' %}">Dashboard</a>
+                                <a class="nav-link" href="{% url 'doctors:doctor_dashboard' %}">Dashboard</a>
                             </li>
                         {% elif user.role == 'medical_store' %}
                             <li class="nav-item">
