@@ -8,3 +8,4 @@ scikit-learn>=1.2
 fuzzywuzzy>=0.18
 python-levenshtein>=0.12
 spacy>=3.6
+gunicorn
