@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-12">
+            <h2>Edit Prescription for {{ prescription.appointment.patient.full_name }}</h2>
+            <form method="POST" action="{% url 'doctors:edit_prescription' prescription.id %}">
+                {% csrf_token %}
+                <div class="card">
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">Diagnosis</label>
+                            <textarea class="form-control" name="diagnosis"
+                                rows="3">{{ prescription.diagnosis }}</textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Notes</label>
+                            <textarea class="form-control" name="notes" rows="3">{{ prescription.notes }}</textarea>
+                        </div>
+                        <div id="medicine-section">
+                            {% for medicine in prescribed_medicines %}
+                            <div class="medicine-row">
+                                <div class="row">
+                                    <div class="col-md-3">
+                                        <select class="form-select" name="medicine_{{ forloop.counter0 }}" required>
+                                            <option value="">Select Medicine</option>
+                                            {% for m in medicines %}
+                                            <option value="{{ m.id }}" {% if m.id==medicine.medicine.id %}selected{%
+                                                endif %}>{{ m.name }} ({{ m.strength }})</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <input type="text" class="form-control" name="dosage_{{ forloop.counter0 }}"
+                                            placeholder="Dosage" value="{{ medicine.dosage }}" required>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <input type="text" class="form-control" name="frequency_{{ forloop.counter0 }}"
+                                            placeholder="Frequency" value="{{ medicine.frequency }}" required>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <input type="text" class="form-control" name="duration_{{ forloop.counter0 }}"
+                                            placeholder="Duration" value="{{ medicine.duration }}" required>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <input type="text" class="form-control"
+                                            name="instructions_{{ forloop.counter0 }}"
+                                            placeholder="Additional Instructions" value="{{ medicine.instructions }}">
+                                    </div>
+                                    <div class="col-md-1">
+                                        <button type="button" class="btn btn-danger remove-medicine">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <div class="mt-3">
+                            <button type="button" class="btn btn-outline-primary" id="add-medicine">
+                                <i class="fas fa-plus"></i> Add Another Medicine
+                            </button>
+                        </div>
+                        <div class="mt-3">
+                            <button type="submit" class="btn btn-primary">Update Prescription</button>
+                            <a href="{% url 'doctors:view_prescription' prescription.id %}"
+                                class="btn btn-secondary">Cancel</a>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+</div>
+{% endblock %}

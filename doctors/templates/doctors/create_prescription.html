@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-12">
+            <h2>Create Prescription for {{ appointment.patient.full_name }}</h2>
+            <form method="POST" action="{% url 'doctors:create_prescription' appointment.id %}">
+                {% csrf_token %}
+                <div class="card">
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">Diagnosis</label>
+                            <textarea class="form-control" name="diagnosis" rows="3"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Notes</label>
+                            <textarea class="form-control" name="notes" rows="3"></textarea>
+                        </div>
+                        <div id="medicine-section">
+                            <div class="medicine-row">
+                                <div class="row">
+                                    <div class="col-md-3">
+                                        <select class="form-select" name="medicine_0" required>
+                                            <option value="">Select Medicine</option>
+                                            {% for medicine in medicines %}
+                                            <option value="{{ medicine.id }}">{{ medicine.name }} ({{ medicine.strength }})</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <input type="text" class="form-control" name="dosage_0" placeholder="Dosage" required>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <input type="text" class="form-control" name="frequency_0" placeholder="Frequency" required>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <input type="text" class="form-control" name="duration_0" placeholder="Duration" required>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <input type="text" class="form-control" name="instructions_0" placeholder="Additional Instructions">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <button type="button" class="btn btn-outline-primary" id="add-medicine">
+                                <i class="fas fa-plus"></i> Add Another Medicine
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <button type="submit" class="btn btn-primary">Create Prescription</button>
+                    <a href="{% url 'doctors:manage_appointments' %}" class="btn btn-secondary">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    let medicineCount = 1;
+
+    document.getElementById('add-medicine').addEventListener('click', function() {
+        const section = document.getElementById('medicine-section');
+        const newRow = document.createElement('div');
+        newRow.className = 'medicine-row mt-3';
+        newRow.innerHTML = `
+            <div class="row">
+                <div class="col-md-3">
+                    <select class="form-select" name="medicine_${medicineCount}" required>
+                        <option value="">Select Medicine</option>
+                        {% for medicine in medicines %}
+                        <option value="{{ medicine.id }}">{{ medicine.name }} ({{ medicine.strength }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <input type="text" class="form-control" name="dosage_${medicineCount}" placeholder="Dosage" required>
+                </div>
+                <div class="col-md-2">
+                    <input type="text" class="form-control" name="frequency_${medicineCount}" placeholder="Frequency" required>
+                </div>
+                <div class="col-md-2">
+                    <input type="text" class="form-control" name="duration_${medicineCount}" placeholder="Duration" required>
+                </div>
+                <div class="col-md-2">
+                    <input type="text" class="form-control" name="instructions_${medicineCount}" placeholder="Additional Instructions">
+                </div>
+                <div class="col-md-1">
+                    <button type="button" class="btn btn-outline-danger remove-medicine">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+        section.appendChild(newRow);
+        medicineCount++;
+    });
+
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-medicine')) {
+            e.target.closest('.medicine-row').remove();
+        }
+    });
+</script>
+{% endblock %}
+{% endblock %}

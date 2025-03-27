@@ -11,4 +11,8 @@ urlpatterns = [
     path('book_appointment/', views.book_appointment, name='book_appointment'),
     path('get_time_slots/', views.get_available_time_slots, name='get_available_time_slots'),
     path('manage_appointments/', views.manage_appointments, name='manage_appointments'),
+    path('create_prescription/<int:appointment_id>/', views.create_prescription, name='create_prescription'),
+    path('view_prescription/<int:prescription_id>/', views.view_prescription, name='view_prescription'),
+    path('edit_prescription/<int:prescription_id>/', views.edit_prescription, name='edit_prescription'),
+    # path('video_consultation/<int:appointment_id>/', views.video_consultation, name='video_consultation'),
 ]

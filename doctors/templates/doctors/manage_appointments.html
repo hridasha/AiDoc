@@ -46,7 +46,6 @@
                                         </td>
                                     </tr>
                                     {% endfor %}
-                                   
                                 </tbody>
                             </table>
                             {% else %}
@@ -68,6 +67,7 @@
                                         <th>Patient</th>
                                         <th>Date & Time</th>
                                         <th>Status</th>
+                                        <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -76,6 +76,22 @@
                                         <td>{{ appointment.patient.full_name }}</td>
                                         <td>{{ appointment.appointment_date }} {{ appointment.appointment_time }}</td>
                                         <td>{{ appointment.get_status_display }}</td>
+                                        <td>
+                                            {% if appointment.status == 'approved' %}
+                                            <form method="POST" action="{% url 'doctors:manage_appointments' %}" class="d-inline">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="appointment_id" value="{{ appointment.id }}">
+                                                <input type="hidden" name="action" value="start_consultation">
+                                                <button type="submit" class="btn btn-primary btn-sm">Start Consultation</button>
+                                            </form>
+                                            <form method="POST" action="{% url 'doctors:manage_appointments' %}" class="d-inline">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="appointment_id" value="{{ appointment.id }}">
+                                                <input type="hidden" name="action" value="prescribe">
+                                                <button type="submit" class="btn btn-info btn-sm">Prescribe Medicine</button>
+                                            </form>
+                                            {% endif %}
+                                        </td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>

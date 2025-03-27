@@ -5,7 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 from django.db.models import Q
 from .forms import DoctorProfileForm
-from .models import Doctor, Specialization, Appointment
+from .models import Doctor, Specialization, Appointment, Prescription, Medicine, PrescribedMedicine
 from datetime import datetime, timedelta
 
 @login_required
@@ -281,11 +281,15 @@ def manage_appointments(request):
                     appointment.status = 'approved'
                     appointment.save()
                     messages.success(request, 'Appointment request approved successfully!')
+                elif action == 'start_consultation':
+                    return redirect('doctors:video_consultation', appointment_id=appointment_id)
                 elif action == 'reject':
                     appointment.status = 'rejected'
                     appointment.reason_for_rejection = reason
                     appointment.save()
                     messages.success(request, 'Appointment request rejected successfully!')
+                elif action == 'prescribe':
+                    return redirect('doctors:create_prescription', appointment_id=appointment_id)
                 
                 return redirect('doctors:manage_appointments')
                 
@@ -312,6 +316,119 @@ def manage_appointments(request):
     except Doctor.DoesNotExist:
         messages.error(request, 'Access denied')
         return redirect('doctors:doctor_dashboard')
+
+@login_required
+def create_prescription(request, appointment_id):
+    try:
+        appointment = Appointment.objects.get(id=appointment_id, doctor=request.user.doctor)
+        
+        if request.method == 'POST':
+            diagnosis = request.POST.get('diagnosis', '')
+            notes = request.POST.get('notes', '')
+            
+            # Create prescription
+            prescription = Prescription.objects.create(
+                appointment=appointment,
+                diagnosis=diagnosis,
+                notes=notes
+            )
+            
+            # Add prescribed medicines
+            for i in range(int(request.POST.get('medicine_count', 0))):
+                medicine_id = request.POST.get(f'medicine_{i}')
+                dosage = request.POST.get(f'dosage_{i}')
+                frequency = request.POST.get(f'frequency_{i}')
+                duration = request.POST.get(f'duration_{i}')
+                instructions = request.POST.get(f'instructions_{i}', '')
+                
+                if medicine_id and dosage and frequency and duration:
+                    medicine = Medicine.objects.get(id=medicine_id)
+                    PrescribedMedicine.objects.create(
+                        prescription=prescription,
+                        medicine=medicine,
+                        dosage=dosage,
+                        frequency=frequency,
+                        duration=duration,
+                        instructions=instructions
+                    )
+            
+            messages.success(request, 'Prescription created successfully!')
+            return redirect('doctors:view_prescription', prescription_id=prescription.id)
+            
+        # Get all available medicines
+        medicines = Medicine.objects.all()
+        
+        return render(request, 'doctors/create_prescription.html', {
+            'appointment': appointment,
+            'medicines': medicines
+        })
+        
+    except (Appointment.DoesNotExist, Medicine.DoesNotExist):
+        messages.error(request, 'Invalid appointment or medicine')
+        return redirect('doctors:manage_appointments')
+
+@login_required
+def view_prescription(request, prescription_id):
+    try:
+        prescription = Prescription.objects.get(id=prescription_id, appointment__doctor=request.user.doctor)
+        prescribed_medicines = prescription.prescribedmedicine_set.all()
+        
+        return render(request, 'doctors/view_prescription.html', {
+            'prescription': prescription,
+            'prescribed_medicines': prescribed_medicines
+        })
+        
+    except Prescription.DoesNotExist:
+        messages.error(request, 'Prescription not found')
+        return redirect('doctors:manage_appointments')
+
+@login_required
+def edit_prescription(request, prescription_id):
+    try:
+        prescription = Prescription.objects.get(id=prescription_id, appointment__doctor=request.user.doctor)
+        
+        if request.method == 'POST':
+            prescription.diagnosis = request.POST.get('diagnosis', '')
+            prescription.notes = request.POST.get('notes', '')
+            prescription.save()
+            
+            # Clear existing prescribed medicines
+            prescription.prescribedmedicine_set.all().delete()
+            
+            # Add new prescribed medicines
+            for i in range(int(request.POST.get('medicine_count', 0))):
+                medicine_id = request.POST.get(f'medicine_{i}')
+                dosage = request.POST.get(f'dosage_{i}')
+                frequency = request.POST.get(f'frequency_{i}')
+                duration = request.POST.get(f'duration_{i}')
+                instructions = request.POST.get(f'instructions_{i}', '')
+                
+                if medicine_id and dosage and frequency and duration:
+                    medicine = Medicine.objects.get(id=medicine_id)
+                    PrescribedMedicine.objects.create(
+                        prescription=prescription,
+                        medicine=medicine,
+                        dosage=dosage,
+                        frequency=frequency,
+                        duration=duration,
+                        instructions=instructions
+                    )
+            
+            messages.success(request, 'Prescription updated successfully!')
+            return redirect('doctors:view_prescription', prescription_id=prescription.id)
+            
+        medicines = Medicine.objects.all()
+        prescribed_medicines = prescription.prescribedmedicine_set.all()
+        
+        return render(request, 'doctors/edit_prescription.html', {
+            'prescription': prescription,
+            'medicines': medicines,
+            'prescribed_medicines': prescribed_medicines
+        })
+        
+    except (Prescription.DoesNotExist, Medicine.DoesNotExist):
+        messages.error(request, 'Prescription not found')
+        return redirect('doctors:manage_appointments')
 
 def doctor_dashboard(request):
     if not request.user.is_authenticated:
