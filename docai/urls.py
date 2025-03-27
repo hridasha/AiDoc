@@ -21,7 +21,7 @@ from django.views.generic import RedirectView
 urlpatterns = [
     path('admin/', admin.site.urls),
     # path('', RedirectView.as_view(url='/accounts/login/', permanent=False)),  # Redirect root to login
-    path('accounts/', include('authentication.urls')),  # User registration & login
+    path('', include('authentication.urls')),  # User registration & login
     path('patient/', include('patients.urls')),  # Patient dashboard & profile setup
     path('doctor/', include('doctors.urls')),  # Doctor dashboard & profile setup
     path('medical_store/', include('medical_store.urls')),  # Medical store dashboard & profile setup

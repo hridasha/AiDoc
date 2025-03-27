@@ -155,7 +155,7 @@ def book_appointment(request):
                     'success': False
                 }, status=400)
 
-            # Create the appointment
+            # Create the appointment request
             appointment = Appointment.objects.create(
                 patient=request.user.patient,
                 doctor=doctor,
@@ -183,6 +183,8 @@ def book_appointment(request):
         'error': 'Only POST requests are allowed',
         'success': False
     }, status=405)
+
+
 
 @login_required
 def edit_profile(request):
@@ -261,6 +263,55 @@ def doctor_list(request):
         
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+@login_required
+def manage_appointments(request):
+    try:
+        doctor = Doctor.objects.get(user=request.user)
+        
+        if request.method == 'POST':
+            appointment_id = request.POST.get('appointment_id')
+            action = request.POST.get('action')
+            reason = request.POST.get('reason', '')
+            
+            try:
+                appointment = Appointment.objects.get(id=appointment_id, doctor=doctor)
+                
+                if action == 'approve':
+                    appointment.status = 'approved'
+                    appointment.save()
+                    messages.success(request, 'Appointment request approved successfully!')
+                elif action == 'reject':
+                    appointment.status = 'rejected'
+                    appointment.reason_for_rejection = reason
+                    appointment.save()
+                    messages.success(request, 'Appointment request rejected successfully!')
+                
+                return redirect('doctors:manage_appointments')
+                
+            except Appointment.DoesNotExist:
+                messages.error(request, 'Appointment not found')
+                return redirect('doctors:manage_appointments')
+        
+        pending_appointments = Appointment.objects.filter(
+            doctor=doctor,
+            status='pending'
+        ).order_by('appointment_date', 'appointment_time')
+        
+        upcoming_appointments = Appointment.objects.filter(
+            doctor=doctor,
+            status='approved',
+            appointment_date__gte=datetime.now().date()
+        ).order_by('appointment_date', 'appointment_time')
+        
+        return render(request, 'doctors/manage_appointments.html', {
+            'pending_appointments': pending_appointments,
+            'upcoming_appointments': upcoming_appointments
+        })
+        
+    except Doctor.DoesNotExist:
+        messages.error(request, 'Access denied')
+        return redirect('doctors:doctor_dashboard')
 
 def doctor_dashboard(request):
     if not request.user.is_authenticated:

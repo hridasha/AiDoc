@@ -1,0 +1,120 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-12">
+            <h2>Manage Appointments</h2>
+            <div class="row mt-4">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h4>Pending Requests</h4>
+                        </div>
+                        <div class="card-body">
+                            {% if pending_appointments %}
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Patient</th>
+                                        <th>Date & Time</th>
+                                        <th>Symptoms</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for appointment in pending_appointments %}
+                                    <tr>
+                                        <td>{{ appointment.patient.full_name }}</td>
+                                        <td>{{ appointment.appointment_date }} {{ appointment.appointment_time }}</td>
+                                        <td>{{ appointment.symptoms }}</td>
+                                        <td>
+                                            <form method="POST" action="{% url 'doctors:manage_appointments' %}" class="d-inline">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="appointment_id" value="{{ appointment.id }}">
+                                                <input type="hidden" name="action" value="approve">
+                                                <button type="submit" class="btn btn-success btn-sm">Approve</button>
+                                            </form>
+                                            <form method="POST" action="{% url 'doctors:manage_appointments' %}" class="d-inline">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="appointment_id" value="{{ appointment.id }}">
+                                                <input type="hidden" name="action" value="reject">
+                                                <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#rejectModal{{ appointment.id }}">
+                                                    Reject
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                   
+                                </tbody>
+                            </table>
+                            {% else %}
+                            <p>No pending appointment requests.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h4>Upcoming Appointments</h4>
+                        </div>
+                        <div class="card-body">
+                            {% if upcoming_appointments %}
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Patient</th>
+                                        <th>Date & Time</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for appointment in upcoming_appointments %}
+                                    <tr>
+                                        <td>{{ appointment.patient.full_name }}</td>
+                                        <td>{{ appointment.appointment_date }} {{ appointment.appointment_time }}</td>
+                                        <td>{{ appointment.get_status_display }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                            {% else %}
+                            <p>No upcoming appointments.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Rejection Modal -->
+{% for appointment in pending_appointments %}
+<div class="modal fade" id="rejectModal{{ appointment.id }}" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Reject Appointment Request</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form method="POST" action="{% url 'doctors:manage_appointments' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="appointment_id" value="{{ appointment.id }}">
+                    <input type="hidden" name="action" value="reject">
+                    <div class="mb-3">
+                        <label for="reason{{ appointment.id }}" class="form-label">Reason for Rejection</label>
+                        <textarea class="form-control" id="reason{{ appointment.id }}" name="reason" rows="3" required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-danger">Reject Appointment</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}

@@ -231,9 +231,7 @@
                                     <div class="doctor-experience">${doctor.experience} years experience</div>
                                     <div class="doctor-rating">Rating: ${doctor.rating}/5</div>
                                 </div>
-                                <button class="btn btn-primary btn-sm" onclick="bookAppointment('${doctor.id}')">
-                                    Book Appointment
-                                </button>
+                                <a href="/patient/appointment/${doctor.id}/" class="btn btn-primary">Book Appointment</a>
                             </div>
                         </div>
                     `).join('')}

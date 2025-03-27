@@ -3,6 +3,7 @@ from authentication.models import CustomUser
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from datetime import datetime, timedelta
 
 class Specialization(models.Model):
     name = models.CharField(max_length=100)
@@ -55,13 +56,39 @@ class Doctor(models.Model):
     def __str__(self):
         return f"Dr. {self.full_name}"
 
+    def get_available_time_slots(self, date):
+        """
+        Get available time slots for a specific date
+        """
+        # Get all appointments for this doctor on the given date
+        booked_slots = Appointment.objects.filter(
+            doctor=self,
+            appointment_date=date
+        ).values_list('appointment_time', flat=True)
+
+        # Generate time slots from start_time to end_time
+        current_time = self.start_time
+        time_slots = []
+        
+        while current_time < self.end_time:
+            # Format time as HH:MM
+            time_slot = current_time.strftime('%H:%M')
+            
+            # Check if this time slot is already booked
+            if time_slot not in [t.strftime('%H:%M') for t in booked_slots]:
+                time_slots.append(time_slot)
+            
+            # Move to next 30-minute slot
+            current_time = (datetime.combine(date.today(), current_time) + timedelta(minutes=30)).time()
+        
+        return time_slots
+
     class Meta:
         ordering = ['-created_at']
         verbose_name = 'Doctor'
         verbose_name_plural = 'Doctors'
 
     def save(self, *args, **kwargs):
-        # Update profile completion status based on required fields
         required_fields = [
             'full_name', 'specialization', 'qualification', 'experience',
             'fee', 'working_days', 'contact_number', 'email',
@@ -73,8 +100,9 @@ class Doctor(models.Model):
 
 class Appointment(models.Model):
     STATUS_CHOICES = [
-        ('pending', 'Pending'),
-        ('confirmed', 'Confirmed'),
+        ('pending', 'Pending Request'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
         ('cancelled', 'Cancelled'),
         ('completed', 'Completed')
     ]
@@ -88,12 +116,13 @@ class Appointment(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    reason_for_rejection = models.TextField(blank=True, null=True)
 
     class Meta:
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"Appointment with Dr. {self.doctor.full_name} on {self.appointment_date}"
+        return f"Appointment with Dr. {self.doctor.full_name} on {self.appointment_date} ({self.get_status_display()})"
 
 @receiver(post_save, sender=CustomUser)
 def create_doctor(sender, instance, created, **kwargs):
@@ -102,11 +131,11 @@ def create_doctor(sender, instance, created, **kwargs):
             user=instance,
             full_name=instance.username,
             email=instance.email,
-            contact_number='',  # Can be updated later
+            contact_number='', 
             city='',
             state='',
             pincode='',
-            medical_license_number='',  # Required for completion
+            medical_license_number='', 
             registration_date=instance.date_joined.date()
         )
 

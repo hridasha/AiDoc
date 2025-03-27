@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-12">
+            <h2>My Appointments</h2>
+            <div class="card mt-4">
+                <div class="card-body">
+                    {% if appointments %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Doctor</th>
+                                    <th>Date & Time</th>
+                                    <th>Status</th>
+                                    <th>Symptoms</th>
+                                    <th>Message</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for appointment in appointments %}
+                                <tr>
+                                    <td>Dr. {{ appointment.doctor.full_name }}</td>
+                                    <td>{{ appointment.appointment_date }} {{ appointment.appointment_time }}</td>
+                                    <td>
+                                        <span class="badge {% if appointment.status == 'pending' %}bg-warning{% elif appointment.status == 'approved' %}bg-success{% elif appointment.status == 'rejected' %}bg-danger{% elif appointment.status == 'cancelled' %}bg-secondary{% else %}bg-info{% endif %}">
+                                            {{ appointment.get_status_display }}
+                                        </span>
+                                    </td>
+                                    <td>{{ appointment.symptoms }}</td>
+                                    <td>{{ appointment.message }}</td>
+                                    <td>
+                                        {% if appointment.status == 'rejected' %}
+                                        <button type="button" class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#rejectionModal{{ appointment.id }}">
+                                            View Reason
+                                        </button>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-center">No appointments found.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% for appointment in appointments %}
+{% if appointment.status == 'rejected' %}
+<div class="modal fade" id="rejectionModal{{ appointment.id }}" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Rejection Reason</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p><strong>Doctor:</strong> Dr. {{ appointment.doctor.full_name }}</p>
+                <p><strong>Appointment Date:</strong> {{ appointment.appointment_date }}</p>
+                <p><strong>Reason for Rejection:</strong></p>
+                <p>{{ appointment.reason_for_rejection }}</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endfor %}
+{% endblock %}

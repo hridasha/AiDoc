@@ -1,9 +1,13 @@
 from django.shortcuts import render, redirect
+
+from doctors.views import get_available_time_slots
 from .models import Patient
 from django.contrib import messages
 from datetime import datetime
 from django.contrib.auth.decorators import login_required
 from functools import wraps
+from doctors.models import Doctor, Appointment
+from doctors.views import get_available_time_slots
 
 def profile_required(view_func):
     @wraps(view_func)
@@ -69,3 +73,80 @@ def patient_dashboard(request):
 @profile_required
 def patient_profile(request):
     return render(request, "patients/profile.html")
+
+@login_required
+def appointment_booking(request, doctor_id):
+    try:
+        doctor = Doctor.objects.get(id=doctor_id)
+        
+        if request.method == 'POST':
+            appointment_date = request.POST.get('appointment_date')
+            time_slot = request.POST.get('time_slot')
+            symptoms = request.POST.get('symptoms')
+            message = request.POST.get('message', '')
+            
+            if not appointment_date or not time_slot or not symptoms:
+                messages.error(request, 'Please fill in all required fields')
+                return redirect('patients:appointment_booking', doctor_id=doctor_id)
+            
+            # Check if the time slot is already requested
+            if Appointment.objects.filter(
+                doctor=doctor,
+                appointment_date=appointment_date,
+                appointment_time__hour=int(time_slot.split(':')[0]),
+                appointment_time__minute=int(time_slot.split(':')[1]),
+                status__in=['pending', 'approved']
+            ).exists():
+                messages.error(request, 'This time slot already has a pending request')
+                return redirect('patients:appointment_booking', doctor_id=doctor_id)
+            
+            # Create the appointment request
+            appointment = Appointment(
+                patient=request.user.patient,
+                doctor=doctor,
+                appointment_date=appointment_date,
+                appointment_time=datetime.strptime(time_slot, '%H:%M').time(),
+                symptoms=symptoms,
+                message=message,
+                status='pending'
+            )
+            appointment.save()
+            
+            messages.success(request, 'Appointment request submitted successfully! The doctor will review your request.')
+            return redirect('patients:patient_dashboard')
+            
+        # Get the selected date from GET parameters or use today's date
+        selected_date = request.GET.get('date')
+        if not selected_date:
+            selected_date = datetime.now().date()
+        else:
+            selected_date = datetime.strptime(selected_date, '%Y-%m-%d').date()
+        
+        # Get available time slots for the selected date
+        available_slots = doctor.get_available_time_slots(selected_date)
+        
+        return render(request, 'patients/appointment_booking.html', {
+            'doctor': doctor,
+            'available_slots': available_slots,
+            'selected_date': selected_date
+        })
+    except Doctor.DoesNotExist:
+        messages.error(request, 'Doctor not found')
+        return redirect('patients:doctor_list')
+
+@login_required
+def view_appointments(request):
+    try:
+        patient = request.user.patient
+        
+        # Get all appointments for this patient
+        appointments = Appointment.objects.filter(
+            patient=patient
+        ).order_by('-appointment_date', '-appointment_time')
+        
+        return render(request, 'patients/view_appointments.html', {
+            'appointments': appointments
+        })
+    except Patient.DoesNotExist:
+        messages.error(request, 'Patient profile not found')
+        return redirect('patients:patient_profile_setup')
