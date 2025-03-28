@@ -21,23 +21,46 @@
                             <div class="medicine-row">
                                 <div class="row">
                                     <div class="col-md-3">
-                                        <select class="form-select" name="medicine_0" required>
-                                            <option value="">Select Medicine</option>
-                                            {% for medicine in medicines %}
-                                            <option value="{{ medicine.id }}">{{ medicine.name }} ({{ medicine.strength }})</option>
-                                            {% endfor %}
+                                        <label class="form-label">Medicine Name</label>
+                                        <input type="text" class="form-control" name="medicine_name_0" required>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Generic Name</label>
+                                        <input type="text" class="form-control" name="generic_name_0">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label">Dosage Form</label>
+                                        <select class="form-select" name="dosage_form_0" required>
+                                            <option value="">Select Dosage Form</option>
+                                            <option value="Tablet">Tablet</option>
+                                            <option value="Capsule">Capsule</option>
+                                            <option value="Syrup">Syrup</option>
+                                            <option value="Injection">Injection</option>
+                                            <option value="Cream">Cream</option>
+                                            <option value="Ointment">Ointment</option>
+                                            <option value="Eye Drop">Eye Drop</option>
+                                            <option value="Nasal Spray">Nasal Spray</option>
+                                            <option value="Other">Other</option>
                                         </select>
                                     </div>
                                     <div class="col-md-2">
-                                        <input type="text" class="form-control" name="dosage_0" placeholder="Dosage" required>
+                                        <label class="form-label">Strength</label>
+                                        <input type="text" class="form-control" name="strength_0" required>
                                     </div>
                                     <div class="col-md-2">
-                                        <input type="text" class="form-control" name="frequency_0" placeholder="Frequency" required>
+                                        <label class="form-label">Dosage</label>
+                                        <input type="text" class="form-control" name="dosage_0" placeholder="e.g., 1 tablet, 5ml" required>
                                     </div>
                                     <div class="col-md-2">
-                                        <input type="text" class="form-control" name="duration_0" placeholder="Duration" required>
+                                        <label class="form-label">Frequency</label>
+                                        <input type="text" class="form-control" name="frequency_0" placeholder="e.g., 3 times daily, once daily" required>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label">Duration</label>
+                                        <input type="text" class="form-control" name="duration_0" placeholder="e.g., 5 days, 2 weeks" required>
                                     </div>
                                     <div class="col-md-3">
+                                        <label class="form-label">Instructions</label>
                                         <input type="text" class="form-control" name="instructions_0" placeholder="Additional Instructions">
                                     </div>
                                 </div>
@@ -70,27 +93,50 @@
         newRow.innerHTML = `
             <div class="row">
                 <div class="col-md-3">
-                    <select class="form-select" name="medicine_${medicineCount}" required>
-                        <option value="">Select Medicine</option>
-                        {% for medicine in medicines %}
-                        <option value="{{ medicine.id }}">{{ medicine.name }} ({{ medicine.strength }})</option>
-                        {% endfor %}
+                    <label class="form-label">Medicine Name</label>
+                    <input type="text" class="form-control" name="medicine_name_${medicineCount}" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Generic Name</label>
+                    <input type="text" class="form-control" name="generic_name_${medicineCount}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Dosage Form</label>
+                    <select class="form-select" name="dosage_form_${medicineCount}" required>
+                        <option value="">Select Dosage Form</option>
+                        <option value="Tablet">Tablet</option>
+                        <option value="Capsule">Capsule</option>
+                        <option value="Syrup">Syrup</option>
+                        <option value="Injection">Injection</option>
+                        <option value="Cream">Cream</option>
+                        <option value="Ointment">Ointment</option>
+                        <option value="Eye Drop">Eye Drop</option>
+                        <option value="Nasal Spray">Nasal Spray</option>
+                        <option value="Other">Other</option>
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <input type="text" class="form-control" name="dosage_${medicineCount}" placeholder="Dosage" required>
+                    <label class="form-label">Strength</label>
+                    <input type="text" class="form-control" name="strength_${medicineCount}" required>
                 </div>
                 <div class="col-md-2">
-                    <input type="text" class="form-control" name="frequency_${medicineCount}" placeholder="Frequency" required>
+                    <label class="form-label">Dosage</label>
+                    <input type="text" class="form-control" name="dosage_${medicineCount}" placeholder="e.g., 1 tablet, 5ml" required>
                 </div>
                 <div class="col-md-2">
-                    <input type="text" class="form-control" name="duration_${medicineCount}" placeholder="Duration" required>
+                    <label class="form-label">Frequency</label>
+                    <input type="text" class="form-control" name="frequency_${medicineCount}" placeholder="e.g., 3 times daily, once daily" required>
                 </div>
                 <div class="col-md-2">
+                    <label class="form-label">Duration</label>
+                    <input type="text" class="form-control" name="duration_${medicineCount}" placeholder="e.g., 5 days, 2 weeks" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Instructions</label>
                     <input type="text" class="form-control" name="instructions_${medicineCount}" placeholder="Additional Instructions">
                 </div>
                 <div class="col-md-1">
-                    <button type="button" class="btn btn-outline-danger remove-medicine">
+                    <button type="button" class="btn btn-outline-danger remove-medicine mt-3">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>

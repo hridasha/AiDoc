@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect
-
+from doctors.models import Prescription
 from doctors.views import get_available_time_slots
 from .models import Patient
 from django.contrib import messages
@@ -113,7 +113,7 @@ def appointment_booking(request, doctor_id):
             appointment.save()
             
             messages.success(request, 'Appointment request submitted successfully! The doctor will review your request.')
-            return redirect('patients:patient_dashboard')
+            return redirect('patients:dashboard')
             
         # Get the selected date from GET parameters or use today's date
         selected_date = request.GET.get('date')
@@ -150,3 +150,18 @@ def view_appointments(request):
     except Patient.DoesNotExist:
         messages.error(request, 'Patient profile not found')
         return redirect('patients:patient_profile_setup')
+    
+@login_required
+def view_prescription(request, prescription_id):
+    try:
+        prescription = Prescription.objects.get(id=prescription_id, appointment__patient=request.user.patient)
+        prescribed_medicines = prescription.prescribedmedicine_set.all()
+        
+        return render(request, 'patients/view_prescription.html', {
+            'prescription': prescription,
+            'prescribed_medicines': prescribed_medicines
+        })
+        
+    except Prescription.DoesNotExist:
+        messages.error(request, 'Prescription not found')
+        return redirect('patients:view_appointments')

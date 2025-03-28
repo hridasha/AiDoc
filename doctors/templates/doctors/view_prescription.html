@@ -4,9 +4,20 @@
 <div class="container mt-5">
     <div class="row">
         <div class="col-md-12">
-            <h2>Prescription for {{ prescription.appointment.patient.full_name }}</h2>
+            <h2>Prescription Details</h2>
             <div class="card">
                 <div class="card-body">
+                    <div class="mb-3">
+                        <h5>Patient</h5>
+                        <p>{{ prescription.appointment.patient.full_name }}</p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h5>Appointment Details</h5>
+                        <p><strong>Date:</strong> {{ prescription.appointment.appointment_date }}</p>
+                        <p><strong>Time:</strong> {{ prescription.appointment.appointment_time }}</p>
+                    </div>
+                    
                     {% if prescription.diagnosis %}
                     <div class="mb-3">
                         <h5>Diagnosis</h5>
@@ -28,6 +39,9 @@
                                 <thead>
                                     <tr>
                                         <th>Medicine</th>
+                                        <th>Generic Name</th>
+                                        <th>Dosage Form</th>
+                                        <th>Strength</th>
                                         <th>Dosage</th>
                                         <th>Frequency</th>
                                         <th>Duration</th>
@@ -37,11 +51,18 @@
                                 <tbody>
                                     {% for medicine in prescribed_medicines %}
                                     <tr>
-                                        <td>{{ medicine.medicine.name }} ({{ medicine.medicine.strength }})</td>
+                                        <td>{{ medicine.medicine.name }}</td>
+                                        <td>{{ medicine.medicine.generic_name }}</td>
+                                        <td>{{ medicine.medicine.dosage_form }}</td>
+                                        <td>{{ medicine.medicine.strength }}</td>
                                         <td>{{ medicine.dosage }}</td>
                                         <td>{{ medicine.frequency }}</td>
                                         <td>{{ medicine.duration }}</td>
                                         <td>{{ medicine.instructions }}</td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="8" class="text-center">No medicines prescribed</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>

@@ -335,14 +335,33 @@ def create_prescription(request, appointment_id):
             
             # Add prescribed medicines
             for i in range(int(request.POST.get('medicine_count', 0))):
-                medicine_id = request.POST.get(f'medicine_{i}')
+                medicine_name = request.POST.get(f'medicine_name_{i}')
+                generic_name = request.POST.get(f'generic_name_{i}', '')
+                dosage_form = request.POST.get(f'dosage_form_{i}')
+                strength = request.POST.get(f'strength_{i}')
                 dosage = request.POST.get(f'dosage_{i}')
                 frequency = request.POST.get(f'frequency_{i}')
                 duration = request.POST.get(f'duration_{i}')
                 instructions = request.POST.get(f'instructions_{i}', '')
                 
-                if medicine_id and dosage and frequency and duration:
-                    medicine = Medicine.objects.get(id=medicine_id)
+                if medicine_name and dosage_form and strength and dosage and frequency and duration:
+                    # Check if medicine exists (case-insensitive)
+                    medicine = Medicine.objects.filter(
+                        name__iexact=medicine_name,
+                        dosage_form__iexact=dosage_form,
+                        strength__iexact=strength
+                    ).first()
+                    
+                    if not medicine:
+                        # Create new medicine
+                        medicine = Medicine.objects.create(
+                            name=medicine_name,
+                            generic_name=generic_name,
+                            dosage_form=dosage_form,
+                            strength=strength
+                        )
+                    
+                    # Add to prescription
                     PrescribedMedicine.objects.create(
                         prescription=prescription,
                         medicine=medicine,
@@ -370,8 +389,24 @@ def create_prescription(request, appointment_id):
 @login_required
 def view_prescription(request, prescription_id):
     try:
-        prescription = Prescription.objects.get(id=prescription_id, appointment__doctor=request.user.doctor)
+        prescription = Prescription.objects.get(
+            id=prescription_id,
+            appointment__doctor=request.user.doctor
+        )
         prescribed_medicines = prescription.prescribedmedicine_set.all()
+        
+        # Ensure we have all the necessary data
+        for medicine in prescribed_medicines:
+            if not medicine.medicine:
+                # If the medicine reference is missing, create a new one
+                new_medicine = Medicine.objects.create(
+                    name=medicine.medicine_name,
+                    generic_name=medicine.generic_name,
+                    dosage_form=medicine.dosage_form,
+                    strength=medicine.strength
+                )
+                medicine.medicine = new_medicine
+                medicine.save()
         
         return render(request, 'doctors/view_prescription.html', {
             'prescription': prescription,
@@ -430,9 +465,30 @@ def edit_prescription(request, prescription_id):
         messages.error(request, 'Prescription not found')
         return redirect('doctors:manage_appointments')
 
+@login_required
 def doctor_dashboard(request):
     if not request.user.is_authenticated:
         return redirect('login')
-    if not request.user.profile_completed:
-        return redirect("profile_setup")
-    return render(request, "doctors/dashboard.html")
+    
+    try:
+        doctor = Doctor.objects.get(user=request.user)
+        
+        # Get recent appointments and prescriptions
+        recent_appointments = Appointment.objects.filter(
+            doctor=doctor,
+            status='completed'
+        ).order_by('-appointment_date', '-appointment_time')[:5]
+        
+        recent_prescriptions = Prescription.objects.filter(
+            appointment__doctor=doctor
+        ).order_by('-created_at')[:5]
+        
+        return render(request, 'doctors/dashboard.html', {
+            'doctor': doctor,
+            'recent_appointments': recent_appointments,
+            'recent_prescriptions': recent_prescriptions
+        })
+        
+    except Doctor.DoesNotExist:
+        messages.error(request, 'Doctor profile not found')
+        return redirect('doctors:profile_setup')
