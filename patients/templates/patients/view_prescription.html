@@ -8,8 +8,8 @@
             <div class="card">
                 <div class="card-body">
                     <div class="mb-3">
-                        <h5>Patient</h5>
-                        <p>{{ prescription.appointment.patient.full_name }}</p>
+                        <h5>Doctor</h5>
+                        <p>{{ prescription.appointment.doctor.full_name }}</p>
                     </div>
                     
                     <div class="mb-3">
@@ -49,7 +49,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for medicine in prescription.prescribedmedicine_set.all %}
+                                    {% for medicine in prescribed_medicines %}
                                     <tr>
                                         <td>{{ medicine.medicine_name }}</td>
                                         <td>{{ medicine.generic_name }}</td>
@@ -72,8 +72,7 @@
                 </div>
             </div>
             <div class="mt-3">
-                <a href="{% url 'doctors:edit_prescription' prescription.id %}" class="btn btn-primary">Edit Prescription</a>
-                <a href="{% url 'doctors:manage_appointments' %}" class="btn btn-secondary">Back to Appointments</a>
+                <a href="{% url 'patients:view_appointments' %}" class="btn btn-secondary">Back to Appointments</a>
             </div>
         </div>
     </div>

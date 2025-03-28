@@ -124,28 +124,11 @@ class Appointment(models.Model):
     def __str__(self):
         return f"Appointment with Dr. {self.doctor.full_name} on {self.appointment_date} ({self.get_status_display()})"
 
-class Medicine(models.Model):
-    name = models.CharField(max_length=255)
-    generic_name = models.CharField(max_length=255, blank=True)
-    dosage_form = models.CharField(max_length=100, help_text="e.g., Tablet, Capsule, Syrup")
-    strength = models.CharField(max_length=100, help_text="e.g., 500mg, 10mg/5ml")
-    manufacturer = models.CharField(max_length=255, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return f"{self.name} ({self.strength})"
-
 class Prescription(models.Model):
     appointment = models.OneToOneField(
         Appointment,
         on_delete=models.CASCADE,
         related_name='prescription'
-    )
-    medicines = models.ManyToManyField(
-        Medicine,
-        through='PrescribedMedicine',
-        related_name='prescriptions'
     )
     diagnosis = models.TextField(blank=True)
     notes = models.TextField(blank=True)
@@ -155,17 +138,34 @@ class Prescription(models.Model):
     def __str__(self):
         return f"Prescription for {self.appointment.patient.full_name}"
 
+# class PrescribedMedicine(models.Model):
+#     prescription = models.ForeignKey(Prescription, on_delete=models.CASCADE)
+#     medicine_name = models.CharField(max_length=255)
+#     generic_name = models.CharField(max_length=255, blank=True)
+#     dosage_form = models.CharField(max_length=100, help_text="e.g., Tablet, Capsule, Syrup")
+#     strength = models.CharField(max_length=100, help_text="e.g., 500mg, 10mg/5ml")
+#     dosage = models.CharField(max_length=100, help_text="e.g., 1 tablet, 5ml")
+#     frequency = models.CharField(max_length=100, help_text="e.g., 3 times daily, once daily")
+#     duration = models.CharField(max_length=100, help_text="e.g., 5 days, 2 weeks")
+#     instructions = models.TextField(blank=True)
+#     created_at = models.DateTimeField(auto_now_add=True)
+
+#     def __str__(self):
+#         return f"{self.medicine_name} ({self.strength})"
 class PrescribedMedicine(models.Model):
     prescription = models.ForeignKey(Prescription, on_delete=models.CASCADE)
-    medicine = models.ForeignKey(Medicine, on_delete=models.CASCADE)
-    dosage = models.CharField(max_length=100, help_text="e.g., 1 tablet, 5ml")
-    frequency = models.CharField(max_length=100, help_text="e.g., 3 times daily, once daily")
-    duration = models.CharField(max_length=100, help_text="e.g., 5 days, 2 weeks")
+    medicine_name = models.CharField(max_length=255, blank=True)
+    generic_name = models.CharField(max_length=255, blank=True)
+    dosage_form = models.CharField(max_length=100, blank=True, help_text="e.g., Tablet, Capsule, Syrup")
+    strength = models.CharField(max_length=100, blank=True, help_text="e.g., 500mg, 10mg/5ml")
+    dosage = models.CharField(max_length=100, blank=True, help_text="e.g., 1 tablet, 5ml")
+    frequency = models.CharField(max_length=100, blank=True, help_text="e.g., 3 times daily, once daily")
+    duration = models.CharField(max_length=100, blank=True, help_text="e.g., 5 days, 2 weeks")
     instructions = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.medicine.name} - {self.dosage}"
+        return f"{self.medicine_name} ({self.strength})"
 
 @receiver(post_save, sender=CustomUser)
 def create_doctor(sender, instance, created, **kwargs):

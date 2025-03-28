@@ -5,7 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 from django.db.models import Q
 from .forms import DoctorProfileForm
-from .models import Doctor, Specialization, Appointment, Prescription, Medicine, PrescribedMedicine
+from .models import Doctor, Specialization, Appointment, Prescription, PrescribedMedicine
 from datetime import datetime, timedelta
 
 @login_required
@@ -316,11 +316,16 @@ def manage_appointments(request):
     except Doctor.DoesNotExist:
         messages.error(request, 'Access denied')
         return redirect('doctors:doctor_dashboard')
-
+    
 @login_required
 def create_prescription(request, appointment_id):
     try:
         appointment = Appointment.objects.get(id=appointment_id, doctor=request.user.doctor)
+        
+        # Check if prescription already exists
+        if hasattr(appointment, 'prescription'):
+            messages.error(request, 'A prescription already exists for this appointment')
+            return redirect('doctors:view_prescription', prescription_id=appointment.prescription.id)
         
         if request.method == 'POST':
             diagnosis = request.POST.get('diagnosis', '')
@@ -345,26 +350,13 @@ def create_prescription(request, appointment_id):
                 instructions = request.POST.get(f'instructions_{i}', '')
                 
                 if medicine_name and dosage_form and strength and dosage and frequency and duration:
-                    # Check if medicine exists (case-insensitive)
-                    medicine = Medicine.objects.filter(
-                        name__iexact=medicine_name,
-                        dosage_form__iexact=dosage_form,
-                        strength__iexact=strength
-                    ).first()
-                    
-                    if not medicine:
-                        # Create new medicine
-                        medicine = Medicine.objects.create(
-                            name=medicine_name,
-                            generic_name=generic_name,
-                            dosage_form=dosage_form,
-                            strength=strength
-                        )
-                    
                     # Add to prescription
                     PrescribedMedicine.objects.create(
                         prescription=prescription,
-                        medicine=medicine,
+                        medicine_name=medicine_name,
+                        generic_name=generic_name,
+                        dosage_form=dosage_form,
+                        strength=strength,
                         dosage=dosage,
                         frequency=frequency,
                         duration=duration,
@@ -374,18 +366,14 @@ def create_prescription(request, appointment_id):
             messages.success(request, 'Prescription created successfully!')
             return redirect('doctors:view_prescription', prescription_id=prescription.id)
             
-        # Get all available medicines
-        medicines = Medicine.objects.all()
-        
         return render(request, 'doctors/create_prescription.html', {
-            'appointment': appointment,
-            'medicines': medicines
+            'appointment': appointment
         })
         
-    except (Appointment.DoesNotExist, Medicine.DoesNotExist):
-        messages.error(request, 'Invalid appointment or medicine')
+    except Appointment.DoesNotExist:
+        messages.error(request, 'Invalid appointment')
         return redirect('doctors:manage_appointments')
-
+    
 @login_required
 def view_prescription(request, prescription_id):
     try:
@@ -395,11 +383,9 @@ def view_prescription(request, prescription_id):
         )
         prescribed_medicines = prescription.prescribedmedicine_set.all()
         
-        # Ensure we have all the necessary data
         for medicine in prescribed_medicines:
             if not medicine.medicine:
-                # If the medicine reference is missing, create a new one
-                new_medicine = Medicine.objects.create(
+                new_medicine = PrescribedMedicine.objects.create(
                     name=medicine.medicine_name,
                     generic_name=medicine.generic_name,
                     dosage_form=medicine.dosage_form,
@@ -420,29 +406,42 @@ def view_prescription(request, prescription_id):
 @login_required
 def edit_prescription(request, prescription_id):
     try:
-        prescription = Prescription.objects.get(id=prescription_id, appointment__doctor=request.user.doctor)
+        prescription = Prescription.objects.get(
+            id=prescription_id,
+            appointment__doctor=request.user.doctor
+        )
+        prescribed_medicines = prescription.prescribedmedicine_set.all()
         
         if request.method == 'POST':
-            prescription.diagnosis = request.POST.get('diagnosis', '')
-            prescription.notes = request.POST.get('notes', '')
+            diagnosis = request.POST.get('diagnosis', '')
+            notes = request.POST.get('notes', '')
+            
+            # Update prescription
+            prescription.diagnosis = diagnosis
+            prescription.notes = notes
             prescription.save()
             
-            # Clear existing prescribed medicines
-            prescription.prescribedmedicine_set.all().delete()
+            # Delete existing medicines
+            prescribed_medicines.delete()
             
-            # Add new prescribed medicines
+            # Add new medicines
             for i in range(int(request.POST.get('medicine_count', 0))):
-                medicine_id = request.POST.get(f'medicine_{i}')
+                medicine_name = request.POST.get(f'medicine_name_{i}')
+                generic_name = request.POST.get(f'generic_name_{i}', '')
+                dosage_form = request.POST.get(f'dosage_form_{i}')
+                strength = request.POST.get(f'strength_{i}')
                 dosage = request.POST.get(f'dosage_{i}')
                 frequency = request.POST.get(f'frequency_{i}')
                 duration = request.POST.get(f'duration_{i}')
                 instructions = request.POST.get(f'instructions_{i}', '')
                 
-                if medicine_id and dosage and frequency and duration:
-                    medicine = Medicine.objects.get(id=medicine_id)
+                if medicine_name and dosage_form and strength and dosage and frequency and duration:
                     PrescribedMedicine.objects.create(
                         prescription=prescription,
-                        medicine=medicine,
+                        medicine_name=medicine_name,
+                        generic_name=generic_name,
+                        dosage_form=dosage_form,
+                        strength=strength,
                         dosage=dosage,
                         frequency=frequency,
                         duration=duration,
@@ -452,16 +451,12 @@ def edit_prescription(request, prescription_id):
             messages.success(request, 'Prescription updated successfully!')
             return redirect('doctors:view_prescription', prescription_id=prescription.id)
             
-        medicines = Medicine.objects.all()
-        prescribed_medicines = prescription.prescribedmedicine_set.all()
-        
         return render(request, 'doctors/edit_prescription.html', {
             'prescription': prescription,
-            'medicines': medicines,
             'prescribed_medicines': prescribed_medicines
         })
         
-    except (Prescription.DoesNotExist, Medicine.DoesNotExist):
+    except Prescription.DoesNotExist:
         messages.error(request, 'Prescription not found')
         return redirect('doctors:manage_appointments')
 

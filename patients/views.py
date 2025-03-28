@@ -154,7 +154,10 @@ def view_appointments(request):
 @login_required
 def view_prescription(request, prescription_id):
     try:
-        prescription = Prescription.objects.get(id=prescription_id, appointment__patient=request.user.patient)
+        prescription = Prescription.objects.get(
+            id=prescription_id,
+            appointment__patient=request.user.patient
+        )
         prescribed_medicines = prescription.prescribedmedicine_set.all()
         
         return render(request, 'patients/view_prescription.html', {
