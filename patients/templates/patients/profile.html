@@ -1,0 +1,46 @@
+<!-- patients/profile.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2 class="mb-4">Patient Profile</h2>
+    <div class="card shadow p-4 rounded">
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <strong>Full Name:</strong>
+                <p>{{ patient.full_name }}</p>
+            </div>
+            <div class="col-md-6">
+                <strong>Email:</strong>
+                <p>{{ patient.email }}</p>
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <strong>Date of Birth:</strong>
+                <p>{{ patient.dob }}</p>
+            </div>
+            <div class="col-md-6">
+                <strong>Age:</strong>
+                <p>{{ patient.age }}</p>
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <strong>Gender:</strong>
+                <p>{{ patient.gender }}</p>
+            </div>
+            <div class="col-md-6">
+                <strong>Contact Number:</strong>
+                <p>{{ patient.contact_number }}</p>
+            </div>
+        </div>
+
+        <div class="text-end">
+            <a href="#" class="btn btn-warning">Update Profile</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

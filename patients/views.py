@@ -22,6 +22,11 @@ def profile_required(view_func):
 def patient_profile_setup(request):
     if request.method == "POST":
         try:
+            # Check if patient profile already exists
+            if hasattr(request.user, 'patient'):
+                messages.error(request, "You already have a patient profile. Please update your existing profile instead.")
+                return redirect("patients:dashboard")
+
             full_name = request.POST['full_name']
             dob = request.POST['dob']
             gender = request.POST['gender']
@@ -35,7 +40,6 @@ def patient_profile_setup(request):
             today = datetime.now().date()
             age = today.year - dob_date.year - ((today.month, today.day) < (dob_date.month, dob_date.day))
             
-            # Validate age (should be reasonable)
             if age < 0 or age > 150:
                 messages.error(request, "Please enter a valid date of birth")
                 return render(request, "patients/profile_setup.html")
@@ -54,7 +58,7 @@ def patient_profile_setup(request):
             request.user.profile_completed = True
             request.user.save()
             
-            return redirect("patient_dashboard")
+            return redirect("patients:dashboard")
             
         except KeyError as e:
             messages.error(request, f"Missing required field: {str(e)}")
@@ -65,6 +69,10 @@ def patient_profile_setup(request):
             
     return render(request, "patients/profile_setup.html")
 
+
+def patient_profile_update(request):
+    return render(request, "patients/profile.html")
+
 @login_required
 @profile_required
 def patient_dashboard(request):
@@ -72,6 +80,10 @@ def patient_dashboard(request):
 
 @profile_required
 def patient_profile(request):
+    patient = request.user.patient
+    context ={
+        'patient': patient,
+    }
     return render(request, "patients/profile.html")
 
 @login_required

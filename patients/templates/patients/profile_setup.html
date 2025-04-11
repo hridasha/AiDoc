@@ -63,7 +63,7 @@
             {% endfor %}
         {% endif %}
         
-        <form method="POST" action="{% url 'patient_profile_setup' %}">
+        <form method="POST" action="{% url 'patients:patient_profile_setup' %}">
             {% csrf_token %}
             
             <div class="form-group">
