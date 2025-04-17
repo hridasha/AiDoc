@@ -15,7 +15,7 @@
                             <div class="card bg-light">
                                 <div class="card-body text-center">
                                     <h5 class="card-title">Profile Status</h5>
-                                    <p class="card-text">{{ request.user.profile_completed|yesno:"Complete,Incomplete" }}</p>
+                                    <p class="card-text">{{ request.user.profile.completed|yesno:"Complete,Incomplete" }}</p>
                                 </div>
                             </div>
                         </div>
@@ -53,10 +53,7 @@
                     </div>
 
                     <div class="mt-4">
-                        <a href="{% url 'doctors:profile_setup' %}" class="btn btn-primary">
-                            Edit Profile
-                        </a>
-                        <a href="{% url 'doctors:manage_appointments' %}" class="btn btn-primary">Manage Appointments</a>
+                        <p class="text-muted">Access Profile Setup and Manage Appointments via the navigation bar above.</p>
                     </div>
                 </div>
             </div>
