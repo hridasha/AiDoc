@@ -1,4 +1,4 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from doctors.models import Prescription
 from doctors.views import get_available_time_slots
 from .models import Patient
@@ -8,6 +8,7 @@ from django.contrib.auth.decorators import login_required
 from functools import wraps
 from doctors.models import Doctor, Appointment
 from chatbot.models import ChatbotQuery
+from .forms import PatientForm
 
 def profile_required(view_func):
     @wraps(view_func)
@@ -131,7 +132,7 @@ def patient_profile(request):
     context ={
         'patient': patient,
     }
-    return render(request, "patients/profile.html")
+    return render(request, "patients/edit_profile.html")
 
 @login_required
 def appointment_booking(request, doctor_id):
@@ -227,3 +228,21 @@ def view_prescription(request, prescription_id):
     except Prescription.DoesNotExist:
         messages.error(request, 'Prescription not found')
         return redirect('patients:view_appointments')
+    
+    
+@login_required
+def edit_profile(request):
+    patient = Patient.objects.get(user=request.user)
+    
+    if request.method == 'POST':
+        form = PatientForm(request.POST, request.FILES, instance=patient)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Your profile has been updated successfully.')
+            return redirect('patients:dashboard')
+    else:
+        form = PatientForm(instance=patient)
+    
+    return render(request, 'patients/edit_profile.html', {
+        'form': form
+    })

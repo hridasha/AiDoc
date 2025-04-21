@@ -75,9 +75,8 @@
             <a class="nav-link" href="{% url 'patients:dashboard' %}"><i class="fas fa-home"></i> Dashboard</a>
             <a class="nav-link" href="{% url 'chatbot:chat' %}"><i class="fas fa-robot"></i> Chatbot</a>
             <a class="nav-link" href="{% url 'chatbot:chat_history' %}"><i class="fas fa-history"></i> Chat History</a>
-            <a class="nav-link" href="{% url 'patients:patient_profile' %}"><i class="fas fa-user"></i> Profile</a>
+            <a class="nav-link" href="{% url 'patients:edit_profile' %}"><i class="fas fa-user"></i> Profile</a>
             <a class="nav-link" href="{% url 'patients:view_appointments' %}"><i class="fas fa-calendar-check"></i> Appointments</a>
-            <a class="nav-link" href="#"><i class="fas fa-file-medical"></i> Medical Records</a>
 
           {% elif user.role == 'doctor' %}
             <a class="nav-link" href="{% url 'doctors:doctor_dashboard' %}"><i class="fas fa-home"></i> Dashboard</a>
