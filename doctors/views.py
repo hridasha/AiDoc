@@ -44,6 +44,9 @@ def doctor_profile_setup(request):
             'medical_license_number', 'registration_date'
         ]
     })
+    
+
+    
 
 @login_required
 @csrf_exempt
@@ -459,6 +462,70 @@ def edit_prescription(request, prescription_id):
     except Prescription.DoesNotExist:
         messages.error(request, 'Prescription not found')
         return redirect('doctors:manage_appointments')
+
+@login_required
+def book_appointments_by_search(request):
+    if request.method == 'GET':
+        search_query = request.GET.get('query', '')
+        doctors = Doctor.objects.filter(
+            Q(full_name__icontains=search_query) | 
+            Q(specialization__name__icontains=search_query)
+        ).filter(is_available=True, is_profile_complete=True)
+        
+        if not doctors.exists() and search_query:
+            messages.warning(request, 'No doctors found matching your search criteria.')
+            
+        return render(
+            request, 'doctors/book_appointment_by_search.html', {
+                'doctors': doctors,
+                'search_query': search_query
+            }
+        )
+    
+    elif request.method == 'POST':
+        doctor_id = request.POST.get('doctor_id')
+        if not doctor_id:
+            messages.error(request, 'Please select a doctor first')
+            return redirect('doctors:book_appointments_by_search')
+            
+        try:
+            doctor = Doctor.objects.get(id=doctor_id)
+            appointment_date = request.POST.get('appointment_date')
+            time_slot = request.POST.get('time_slot')
+            symptoms = request.POST.get('symptoms')
+            message = request.POST.get('message', '')
+            
+            if not appointment_date or not time_slot or not symptoms:
+                messages.error(request, 'Please fill in all required fields')
+                return redirect('doctors:book_appointments_by_search')
+            
+            # Check if time slot is available
+            if not doctor.is_time_slot_available(appointment_date, time_slot):
+                messages.error(request, 'Selected time slot is not available')
+                return redirect('doctors:book_appointments_by_search')
+            
+            # Create appointment
+            appointment = Appointment.objects.create(
+                patient=request.user.patient,
+                doctor=doctor,
+                appointment_date=appointment_date,
+                appointment_time=time_slot,
+                symptoms=symptoms,
+                message=message,
+                status='pending'  # or 'approved' based on your logic
+            )
+            
+            messages.success(request, 'Appointment booked successfully!')
+            return redirect('patients:view_appointments')
+            
+        except Doctor.DoesNotExist:
+            messages.error(request, 'Doctor not found')
+            return redirect('doctors:book_appointments_by_search')
+            
+    return render(request, 'doctors/book_appointment_by_search.html', {
+        'doctors': [],
+        'search_query': ''
+    })
 
 @login_required
 def doctor_dashboard(request):

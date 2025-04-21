@@ -7,7 +7,7 @@ from datetime import datetime
 from django.contrib.auth.decorators import login_required
 from functools import wraps
 from doctors.models import Doctor, Appointment
-from doctors.views import get_available_time_slots
+from chatbot.models import ChatbotQuery
 
 def profile_required(view_func):
     @wraps(view_func)
@@ -76,7 +76,54 @@ def patient_profile_update(request):
 @login_required
 @profile_required
 def patient_dashboard(request):
-    return render(request, "patients/dashboard.html")
+    try:
+        patient = request.user.patient
+    except Patient.DoesNotExist:
+        messages.error(request, "Patient profile not found")
+        return redirect('patients:patient_profile_setup')
+    
+    # Get upcoming appointments
+    upcoming_appointments = Appointment.objects.filter(
+        patient=patient,
+        appointment_date__gte=datetime.now().date()
+    ).order_by('appointment_date', 'appointment_time')[:5]
+    
+    # Calculate statistics
+    total_appointments = Appointment.objects.filter(patient=patient).count()
+    completed_appointments = Appointment.objects.filter(
+        patient=patient,
+        status='completed'
+    ).count()
+    pending_appointments = Appointment.objects.filter(
+        patient=patient,
+        status='pending'
+    ).count()
+    
+    # Get recent chatbot interactions
+    recent_interactions = ChatbotQuery.objects.filter(
+        patient=patient
+    ).order_by('-created_at')[:5]
+    
+    past_appointments = Appointment.objects.filter(
+        patient=patient,
+        appointment_date__lt=datetime.now().date()
+    
+    ).order_by('-appointment_date', '-appointment_time')[:5]
+    
+    # Get list of available doctors
+    doctors = Doctor.objects.filter(is_available=True, is_profile_complete=True)
+    
+    context = {
+        'upcoming_appointments': upcoming_appointments,
+        'total_appointments': total_appointments,
+        'completed_appointments': completed_appointments,
+        'pending_appointments': pending_appointments,
+        'recent_interactions': recent_interactions,
+        'past_appointments': past_appointments,
+        'doctors': doctors
+    }
+    
+    return render(request, "patients/dashboard.html", context)
 
 @profile_required
 def patient_profile(request):

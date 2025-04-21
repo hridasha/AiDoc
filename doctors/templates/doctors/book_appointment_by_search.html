@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card">
+                <div class="card-body">
+
+                    <!-- Search Form -->
+                    <form method="GET" action="" class="mb-4">
+                        <div class="input-group">
+                            <input type="text" name="query" class="form-control" 
+                                   placeholder="Search for doctors..." 
+                                   value="{{ search_query }}">
+                            <button type="submit" class="btn btn-primary">Search</button>
+                        </div>
+                    </form>
+
+                    <!-- Doctor List -->
+                    {% if doctors %}
+                    <div class="doctor-list mt-3">
+                        <h5>Available Doctors:</h5>
+                        <div class="list-group">
+                            {% for doctor in doctors %}
+                            <div class="list-group-item">
+                                <div class="d-flex justify-content-between align-items-center clickable" 
+                                     data-doctor-id="{{ doctor.id }}">
+                                    <div>
+                                        <h6 class="mb-1">Dr. {{ doctor.full_name }}</h6>
+                                        <small class="text-muted">{{ doctor.specialization.name }}</small>
+                                    </div>
+                                    <span class="badge {% if doctor.is_available %}bg-success{% else %}bg-danger{% endif %}">
+                                        {{ doctor.get_availability_display }}
+                                    </span>
+                                </div>
+
+                                <!-- Appointment Form (initially hidden) -->
+                                <div class="appointment-form mt-3" id="form-{{ doctor.id }}" style="display: none;">
+                                    <form method="POST">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="doctor_id" value="{{ doctor.id }}">
+
+                                        <div class="mb-3">
+                                            <label for="appointment_date_{{ doctor.id }}" class="form-label">Select Appointment Date</label>
+                                            <input type="date" class="form-control" 
+                                                   id="appointment_date_{{ doctor.id }}" 
+                                                   name="appointment_date" required
+                                                   min="{{ min_date }}">
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label for="time_slot_{{ doctor.id }}" class="form-label">Select Time Slot</label>
+                                            <select class="form-select" id="time_slot_{{ doctor.id }}" name="time_slot" required>
+                                                <option value="">Select a time slot</option>
+                                                {% for slot in doctor.get_available_time_slots %}
+                                                <option value="{{ slot }}">{{ slot }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label for="symptoms_{{ doctor.id }}" class="form-label">Symptoms</label>
+                                            <textarea class="form-control" id="symptoms_{{ doctor.id }}" 
+                                                      name="symptoms" rows="3" required></textarea>
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label for="message_{{ doctor.id }}" class="form-label">Additional Message</label>
+                                            <textarea class="form-control" id="message_{{ doctor.id }}" 
+                                                      name="message" rows="3"></textarea>
+                                        </div>
+
+                                        <button type="submit" class="btn btn-primary">Book Appointment</button>
+                                    </form>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <p class="text-muted">No doctors found matching your search criteria.</p>
+                        <a href="{% url 'doctors:doctor_list' %}" class="btn btn-outline-primary">
+                            View All Doctors
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toggle script -->
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        document.querySelectorAll(".clickable").forEach(card => {
+            card.addEventListener("click", function() {
+                const doctorId = this.dataset.doctorId;
+                const form = document.getElementById(`form-${doctorId}`);
+                form.style.display = form.style.display === "none" ? "block" : "none";
+            });
+        });
+    });
+</script>
+{% endblock %}

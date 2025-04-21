@@ -277,7 +277,7 @@
             
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.error || 'Failed to fetch time slots');
+                throw new Error(errorData.error || 'Failed to fetch time slots');.
             }
 
             const data = await response.json();
