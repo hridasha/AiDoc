@@ -18,7 +18,6 @@
       padding: 1rem;
       position: fixed;
     }
-
     .sidebar .logo {
       display: flex;
       align-items: center;
@@ -55,7 +54,7 @@
     main {
       margin-left: 260px;
       padding: 2rem;
-      flex:1;
+      max-width: 100%;
     }
   </style>
   {% block extra_css %}{% endblock %}
@@ -81,7 +80,7 @@
 
           {% elif user.role == 'doctor' %}
             <a class="nav-link" href="{% url 'doctors:doctor_dashboard' %}"><i class="fas fa-home"></i> Dashboard</a>
-            <a class="nav-link" href="{% url 'doctors:edit_profile' %}"><i class="fas fa-user-cog"></i> Edit Profile </a>
+            <a class="nav-link" href="{% url 'doctors:profile_setup' %}"><i class="fas fa-user-cog"></i> Profile Setup</a>
             <a class="nav-link" href="{% url 'doctors:manage_appointments' %}"><i class="fas fa-calendar-check"></i> Manage Appointments</a>
 
           {% elif user.role == 'medical_store' %}
