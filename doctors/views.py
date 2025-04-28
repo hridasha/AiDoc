@@ -49,13 +49,16 @@ def doctor_profile_setup(request):
     
 
 @login_required
-@csrf_exempt
 def get_available_time_slots(request):
     try:
+        print(f"Request received: {request.method} {request.path}")
+        print(f"Request data: {dict(request.GET)}")
+        
         doctor_id = request.GET.get('doctor_id')
         date = request.GET.get('date')
         
         if not doctor_id or not date:
+            print("Error: Missing doctor_id or date")
             return JsonResponse({
                 'error': 'Doctor ID and date are required',
                 'success': False
@@ -63,17 +66,22 @@ def get_available_time_slots(request):
             
         try:
             doctor = Doctor.objects.get(id=doctor_id)
+            print(f"Found doctor: {doctor.full_name}")
             
             # Convert date string to datetime
             selected_date = datetime.strptime(date, '%Y-%m-%d').date()
+            print(f"Selected date: {selected_date}")
             
             # Get the doctor's working hours
             if not doctor.start_time or not doctor.end_time:
+                print("Error: Doctor has no working hours set")
                 return JsonResponse({
                     'error': 'Doctor has not set working hours',
                     'success': False
                 }, status=400)
-                
+            
+            print(f"Doctor working hours: {doctor.start_time} to {doctor.end_time}")
+            
             start_time = datetime.strptime(doctor.start_time.strftime('%H:%M'), '%H:%M').time()
             end_time = datetime.strptime(doctor.end_time.strftime('%H:%M'), '%H:%M').time()
             
@@ -81,6 +89,8 @@ def get_available_time_slots(request):
             time_slots = []
             current_time = datetime.combine(selected_date, start_time)
             end_datetime = datetime.combine(selected_date, end_time)
+            
+            print(f"Generating time slots from {start_time} to {end_time}")
             
             while current_time < end_datetime:
                 # Check if this time slot is already booked
@@ -97,19 +107,22 @@ def get_available_time_slots(request):
                 
                 current_time += timedelta(minutes=30)
             
+            print(f"Generated {len(time_slots)} time slots")
+            
             return JsonResponse({
                 'success': True,
                 'time_slots': time_slots
             })
             
         except Doctor.DoesNotExist:
+            print(f"Error: Doctor with ID {doctor_id} not found")
             return JsonResponse({
                 'error': 'Doctor not found',
                 'success': False
             }, status=404)
             
     except Exception as e:
-        print(f"Error getting time slots: {e}")
+        print(f"Error getting time slots: {str(e)}")
         return JsonResponse({
             'error': str(e),
             'success': False

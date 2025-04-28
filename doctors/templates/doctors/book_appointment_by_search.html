@@ -42,21 +42,25 @@
                                         <input type="hidden" name="doctor_id" value="{{ doctor.id }}">
 
                                         <div class="mb-3">
+                                            <label class="form-label">Doctor Working Hours</label>
+                                            <p class="text-muted">Start: {{ doctor.start_time|time:"H:i" }} | End: {{ doctor.end_time|time:"H:i" }}</p>
+                                        </div>
+
+                                        <div class="mb-3">
                                             <label for="appointment_date_{{ doctor.id }}" class="form-label">Select Appointment Date</label>
                                             <input type="date" class="form-control" 
                                                    id="appointment_date_{{ doctor.id }}" 
                                                    name="appointment_date" required
-                                                   min="{{ min_date }}">
+                                                   min="{{ min_date }}"
+                                                   onchange="loadTimeSlots(this.value, '{{ doctor.id }}', '{{ doctor.start_time|time:"H:i" }}', '{{ doctor.end_time|time:"H:i" }}')">
                                         </div>
 
                                         <div class="mb-3">
                                             <label for="time_slot_{{ doctor.id }}" class="form-label">Select Time Slot</label>
                                             <select class="form-select" id="time_slot_{{ doctor.id }}" name="time_slot" required>
                                                 <option value="">Select a time slot</option>
-                                                {% for slot in doctor.get_available_time_slots %}
-                                                <option value="{{ slot }}">{{ slot }}</option>
-                                                {% endfor %}
                                             </select>
+                                            <div id="time_slot_error_{{ doctor.id }}" class="text-danger" style="display: none;"></div>
                                         </div>
 
                                         <div class="mb-3">
@@ -94,12 +98,96 @@
 
 <!-- Toggle script -->
 <script>
+    function loadTimeSlots(date, doctorId, startTime, endTime) {
+        console.log('Loading time slots for doctor:', doctorId);
+        console.log('Selected date:', date);
+        console.log('Doctor working hours:', startTime, 'to', endTime);
+
+        if (!date) {
+            console.log('No date selected');
+            return;
+        }
+
+        const select = document.getElementById(`time_slot_${doctorId}`);
+        const errorDiv = document.getElementById(`time_slot_error_${doctorId}`);
+        
+        // Clear any previous errors
+        errorDiv.style.display = 'none';
+        
+        // Show loading state
+        select.innerHTML = '<option value="">Loading time slots...</option>';
+        
+        // Use the full URL pattern with app_name
+        const url = `/doctors/get_time_slots/`;
+        const params = new URLSearchParams({
+            doctor_id: doctorId,
+            date: date
+        });
+        
+        console.log('Making request to:', url + '?' + params.toString());
+        
+        fetch(url + '?' + params.toString())
+            .then(response => {
+                console.log('Response status:', response.status);
+                if (!response.ok) {
+                    throw new Error('Network response was not ok. Status: ' + response.status);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Response data:', data);
+                if (!data.success) {
+                    errorDiv.textContent = data.error || 'Failed to load time slots';
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+                
+                if (data.time_slots) {
+                    select.innerHTML = '<option value="">Select a time slot</option>';
+                    const availableSlots = data.time_slots.filter(slot => !slot.is_booked);
+                    
+                    if (availableSlots.length === 0) {
+                        errorDiv.textContent = 'No available time slots for this date';
+                        errorDiv.style.display = 'block';
+                        return;
+                    }
+                    
+                    availableSlots.forEach(slot => {
+                        const option = document.createElement('option');
+                        option.value = slot.time;
+                        option.textContent = slot.time;
+                        select.appendChild(option);
+                    });
+                } else {
+                    errorDiv.textContent = 'No time slots returned from server';
+                    errorDiv.style.display = 'block';
+                }
+            })
+            .catch(error => {
+                console.error('Error loading time slots:', error);
+                errorDiv.textContent = 'Error loading time slots: ' + error.message;
+                errorDiv.style.display = 'block';
+            });
+    }
+
+    // Add click handler for debugging
     document.addEventListener("DOMContentLoaded", function() {
         document.querySelectorAll(".clickable").forEach(card => {
             card.addEventListener("click", function() {
                 const doctorId = this.dataset.doctorId;
                 const form = document.getElementById(`form-${doctorId}`);
                 form.style.display = form.style.display === "none" ? "block" : "none";
+                
+                // Add click logging
+                console.log('Doctor card clicked:', doctorId);
+                
+                // Initialize the date input with today's date
+                const dateInput = document.getElementById(`appointment_date_${doctorId}`);
+                if (dateInput) {
+                    const today = new Date().toISOString().split('T')[0];
+                    dateInput.value = today;
+                    console.log('Initialized date input with:', today);
+                }
             });
         });
     });
