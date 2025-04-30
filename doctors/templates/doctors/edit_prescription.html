@@ -7,6 +7,7 @@
             <h2>Edit Prescription for {{ prescription.appointment.patient.full_name }}</h2>
             <form method="POST" action="{% url 'doctors:edit_prescription' prescription.id %}">
                 {% csrf_token %}
+                <input type="hidden" name="medicine_count" id="medicine_count" value="{{ prescription.prescribedmedicine_set.count }}">
                 <div class="card">
                     <div class="card-body">
                         <div class="mb-3">
@@ -18,35 +19,35 @@
                             <textarea class="form-control" name="notes" rows="3">{{ prescription.notes }}</textarea>
                         </div>
                         <div id="medicine-section">
-                            {% for medicine in prescribed_medicines %}
+                            {% for medicine in prescription.prescribedmedicine_set.all %}
                             <div class="medicine-row">
                                 <div class="row">
                                     <div class="col-md-3">
                                         <label class="form-label">Medicine Name</label>
-                                        <input type="text" class="form-control" name="medicine_name_{{ forloop.counter0 }}" value="{{ medicine.medicine.name }}" required>
+                                        <input type="text" class="form-control" name="medicine_name_{{ forloop.counter0 }}" value="{{ medicine.medicine_name }}" required>
                                     </div>
                                     <div class="col-md-3">
                                         <label class="form-label">Generic Name</label>
-                                        <input type="text" class="form-control" name="generic_name_{{ forloop.counter0 }}" value="{{ medicine.medicine.generic_name }}">
+                                        <input type="text" class="form-control" name="generic_name_{{ forloop.counter0 }}" value="{{ medicine.generic_name }}">
                                     </div>
                                     <div class="col-md-2">
                                         <label class="form-label">Dosage Form</label>
                                         <select class="form-select" name="dosage_form_{{ forloop.counter0 }}" required>
                                             <option value="">Select Dosage Form</option>
-                                            <option value="Tablet" {% if medicine.medicine.dosage_form == 'Tablet' %}selected{% endif %}>Tablet</option>
-                                            <option value="Capsule" {% if medicine.medicine.dosage_form == 'Capsule' %}selected{% endif %}>Capsule</option>
-                                            <option value="Syrup" {% if medicine.medicine.dosage_form == 'Syrup' %}selected{% endif %}>Syrup</option>
-                                            <option value="Injection" {% if medicine.medicine.dosage_form == 'Injection' %}selected{% endif %}>Injection</option>
-                                            <option value="Cream" {% if medicine.medicine.dosage_form == 'Cream' %}selected{% endif %}>Cream</option>
-                                            <option value="Ointment" {% if medicine.medicine.dosage_form == 'Ointment' %}selected{% endif %}>Ointment</option>
-                                            <option value="Eye Drop" {% if medicine.medicine.dosage_form == 'Eye Drop' %}selected{% endif %}>Eye Drop</option>
-                                            <option value="Nasal Spray" {% if medicine.medicine.dosage_form == 'Nasal Spray' %}selected{% endif %}>Nasal Spray</option>
-                                            <option value="Other" {% if medicine.medicine.dosage_form == 'Other' %}selected{% endif %}>Other</option>
+                                            <option value="Tablet" {% if medicine.dosage_form == 'Tablet' %}selected{% endif %}>Tablet</option>
+                                            <option value="Capsule" {% if medicine.dosage_form == 'Capsule' %}selected{% endif %}>Capsule</option>
+                                            <option value="Syrup" {% if medicine.dosage_form == 'Syrup' %}selected{% endif %}>Syrup</option>
+                                            <option value="Injection" {% if medicine.dosage_form == 'Injection' %}selected{% endif %}>Injection</option>
+                                            <option value="Cream" {% if medicine.dosage_form == 'Cream' %}selected{% endif %}>Cream</option>
+                                            <option value="Ointment" {% if medicine.dosage_form == 'Ointment' %}selected{% endif %}>Ointment</option>
+                                            <option value="Eye Drop" {% if medicine.dosage_form == 'Eye Drop' %}selected{% endif %}>Eye Drop</option>
+                                            <option value="Nasal Spray" {% if medicine.dosage_form == 'Nasal Spray' %}selected{% endif %}>Nasal Spray</option>
+                                            <option value="Other" {% if medicine.dosage_form == 'Other' %}selected{% endif %}>Other</option>
                                         </select>
                                     </div>
                                     <div class="col-md-2">
                                         <label class="form-label">Strength</label>
-                                        <input type="text" class="form-control" name="strength_{{ forloop.counter0 }}" value="{{ medicine.medicine.strength }}" required>
+                                        <input type="text" class="form-control" name="strength_{{ forloop.counter0 }}" value="{{ medicine.strength }}" required>
                                     </div>
                                     <div class="col-md-2">
                                         <label class="form-label">Dosage</label>
@@ -86,7 +87,7 @@
 
 {% block extra_js %}
 <script>
-    let medicineCount = {{ prescribed_medicines.count }};
+    let medicineCount = {{ prescription.prescribedmedicine_set.count }};
 
     document.getElementById('add-medicine').addEventListener('click', function() {
         const section = document.getElementById('medicine-section');
@@ -137,21 +138,12 @@
                     <label class="form-label">Instructions</label>
                     <input type="text" class="form-control" name="instructions_${medicineCount}" placeholder="Additional Instructions">
                 </div>
-                <div class="col-md-1">
-                    <button type="button" class="btn btn-outline-danger remove-medicine mt-3">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
             </div>
         `;
         section.appendChild(newRow);
         medicineCount++;
-    });
-
-    document.addEventListener('click', function(e) {
-        if (e.target.classList.contains('remove-medicine')) {
-            e.target.closest('.medicine-row').remove();
-        }
+        // Update the hidden medicine_count field
+        document.getElementById('medicine_count').value = medicineCount;
     });
 </script>
 {% endblock %}

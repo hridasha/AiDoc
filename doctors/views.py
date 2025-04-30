@@ -426,7 +426,6 @@ def edit_prescription(request, prescription_id):
             id=prescription_id,
             appointment__doctor=request.user.doctor
         )
-        prescribed_medicines = prescription.prescribedmedicine_set.all()
         
         if request.method == 'POST':
             diagnosis = request.POST.get('diagnosis', '')
@@ -438,10 +437,13 @@ def edit_prescription(request, prescription_id):
             prescription.save()
             
             # Delete existing medicines
-            prescribed_medicines.delete()
+            prescription.prescribedmedicine_set.all().delete()
+            
+            # Get the total number of medicines from the form
+            medicine_count = int(request.POST.get('medicine_count', 0))
             
             # Add new medicines
-            for i in range(int(request.POST.get('medicine_count', 0))):
+            for i in range(medicine_count):
                 medicine_name = request.POST.get(f'medicine_name_{i}')
                 generic_name = request.POST.get(f'generic_name_{i}', '')
                 dosage_form = request.POST.get(f'dosage_form_{i}')
@@ -451,6 +453,7 @@ def edit_prescription(request, prescription_id):
                 duration = request.POST.get(f'duration_{i}')
                 instructions = request.POST.get(f'instructions_{i}', '')
                 
+                # Only create medicine if all required fields are present
                 if medicine_name and dosage_form and strength and dosage and frequency and duration:
                     PrescribedMedicine.objects.create(
                         prescription=prescription,
@@ -467,6 +470,8 @@ def edit_prescription(request, prescription_id):
             messages.success(request, 'Prescription updated successfully!')
             return redirect('doctors:view_prescription', prescription_id=prescription.id)
             
+        # For GET request
+        prescribed_medicines = prescription.prescribedmedicine_set.all()
         return render(request, 'doctors/edit_prescription.html', {
             'prescription': prescription,
             'prescribed_medicines': prescribed_medicines
@@ -485,13 +490,45 @@ def book_appointments_by_search(request):
             Q(specialization__name__icontains=search_query)
         ).filter(is_available=True, is_profile_complete=True)
         
+        # Get today's date for time slots
+        today = datetime.now().date()
+        
+        # Prepare time slots for each doctor
+        doctors_with_slots = []
+        for doctor in doctors:
+            time_slots = []
+            if doctor.start_time and doctor.end_time:
+                current_time = datetime.combine(today, doctor.start_time)
+                end_time = datetime.combine(today, doctor.end_time)
+                
+                while current_time < end_time:
+                    # Check if this time slot is already booked
+                    is_booked = Appointment.objects.filter(
+                        doctor=doctor,
+                        appointment_date=today,
+                        appointment_time=current_time.time()
+                    ).exists()
+                    
+                    time_slots.append({
+                        'time': current_time.strftime('%H:%M'),
+                        'is_booked': is_booked
+                    })
+                    
+                    current_time += timedelta(minutes=30)
+            
+            doctors_with_slots.append({
+                'doctor': doctor,
+                'time_slots': time_slots
+            })
+            
         if not doctors.exists() and search_query:
             messages.warning(request, 'No doctors found matching your search criteria.')
             
         return render(
             request, 'doctors/book_appointment_by_search.html', {
-                'doctors': doctors,
-                'search_query': search_query
+                'doctors': doctors_with_slots,
+                'search_query': search_query,
+                'today': today
             }
         )
     
@@ -512,9 +549,18 @@ def book_appointments_by_search(request):
                 messages.error(request, 'Please fill in all required fields')
                 return redirect('doctors:book_appointments_by_search')
             
-            # Check if time slot is available
-            if not doctor.is_time_slot_available(appointment_date, time_slot):
-                messages.error(request, 'Selected time slot is not available')
+            # Convert time slot to time object
+            time_slot_time = datetime.strptime(time_slot, '%H:%M').time()
+            
+            # Check if time slot is available (no existing appointments)
+            is_booked = Appointment.objects.filter(
+                doctor=doctor,
+                appointment_date=appointment_date,
+                appointment_time=time_slot_time
+            ).exists()
+            
+            if is_booked:
+                messages.error(request, 'Selected time slot is already booked')
                 return redirect('doctors:book_appointments_by_search')
             
             # Create appointment
@@ -522,10 +568,10 @@ def book_appointments_by_search(request):
                 patient=request.user.patient,
                 doctor=doctor,
                 appointment_date=appointment_date,
-                appointment_time=time_slot,
+                appointment_time=time_slot_time,
                 symptoms=symptoms,
                 message=message,
-                status='pending'  # or 'approved' based on your logic
+                status='pending'
             )
             
             messages.success(request, 'Appointment booked successfully!')
@@ -533,6 +579,9 @@ def book_appointments_by_search(request):
             
         except Doctor.DoesNotExist:
             messages.error(request, 'Doctor not found')
+            return redirect('doctors:book_appointments_by_search')
+        except ValueError:
+            messages.error(request, 'Invalid time format')
             return redirect('doctors:book_appointments_by_search')
             
     return render(request, 'doctors/book_appointment_by_search.html', {

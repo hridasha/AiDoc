@@ -152,6 +152,20 @@ class Prescription(models.Model):
 
 #     def __str__(self):
 #         return f"{self.medicine_name} ({self.strength})"
+# class PrescribedMedicine(models.Model):
+#     prescription = models.ForeignKey(Prescription, on_delete=models.CASCADE)
+#     medicine_name = models.CharField(max_length=255, blank=True)
+#     generic_name = models.CharField(max_length=255, blank=True)
+#     dosage_form = models.CharField(max_length=100, blank=True, help_text="e.g., Tablet, Capsule, Syrup")
+#     strength = models.CharField(max_length=100, blank=True, help_text="e.g., 500mg, 10mg/5ml")
+#     dosage = models.CharField(max_length=100, blank=True, help_text="e.g., 1 tablet, 5ml")
+#     frequency = models.CharField(max_length=100, blank=True, help_text="e.g., 3 times daily, once daily")
+#     duration = models.CharField(max_length=100, blank=True, help_text="e.g., 5 days, 2 weeks")
+#     instructions = models.TextField(blank=True)
+#     created_at = models.DateTimeField(auto_now_add=True)
+
+#     def __str__(self):
+#         return f"{self.medicine_name} ({self.strength})"
 class PrescribedMedicine(models.Model):
     prescription = models.ForeignKey(Prescription, on_delete=models.CASCADE)
     medicine_name = models.CharField(max_length=255, blank=True)
@@ -166,7 +180,6 @@ class PrescribedMedicine(models.Model):
 
     def __str__(self):
         return f"{self.medicine_name} ({self.strength})"
-
 @receiver(post_save, sender=CustomUser)
 def create_doctor(sender, instance, created, **kwargs):
     if created and instance.role == 'doctor':
