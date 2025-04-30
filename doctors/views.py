@@ -606,28 +606,44 @@ def book_appointments_by_search(request):
 
 @login_required
 def doctor_dashboard(request):
-    if not request.user.is_authenticated:
-        return redirect('login')
-    
     try:
         doctor = Doctor.objects.get(user=request.user)
         
-        # Get recent appointments and prescriptions
-        recent_appointments = Appointment.objects.filter(
+        # Get pending appointments
+        pending_appointments = Appointment.objects.filter(
             doctor=doctor,
-            status='completed'
-        ).order_by('-appointment_date', '-appointment_time')[:5]
+            status='pending'
+        ).order_by('appointment_date', 'appointment_time')
         
-        recent_prescriptions = Prescription.objects.filter(
-            appointment__doctor=doctor
-        ).order_by('-created_at')[:5]
+        # Get upcoming appointments
+        upcoming_appointments = Appointment.objects.filter(
+            doctor=doctor,
+            status='approved',
+            appointment_date__gte=datetime.now().date()
+        ).order_by('appointment_date', 'appointment_time')
         
         return render(request, 'doctors/dashboard.html', {
-            'doctor': doctor,
-            'recent_appointments': recent_appointments,
-            'recent_prescriptions': recent_prescriptions
+            'pending_appointments': pending_appointments,
+            'upcoming_appointments': upcoming_appointments
         })
         
     except Doctor.DoesNotExist:
-        messages.error(request, 'Doctor profile not found')
+        messages.error(request, 'Access denied')
         return redirect('doctors:profile_setup')
+
+@login_required
+def approve_appointment(request, appointment_id):
+    try:
+        appointment = Appointment.objects.get(id=appointment_id, doctor=request.user.doctor)
+        appointment.status = 'approved'
+        appointment.save()
+        
+        # Send email notification
+        send_appointment_approval_email(appointment)
+        
+        messages.success(request, 'Appointment approved successfully!')
+        return redirect('doctors:manage_appointments')
+        
+    except Appointment.DoesNotExist:
+        messages.error(request, 'Appointment not found')
+        return redirect('doctors:manage_appointments')

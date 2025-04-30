@@ -1,0 +1,16 @@
+Appointment Approved
+
+Dear {{ patient.full_name }},
+
+Your appointment with Dr. {{ doctor.full_name }} has been approved.
+
+Appointment Details:
+Date: {{ appointment.appointment_date|date:"F j, Y" }}
+Time: {{ appointment.appointment_time }}
+Doctor: Dr. {{ doctor.full_name }}
+Specialization: {{ doctor.specialization.name }}
+
+Please arrive 15 minutes before your appointment time.
+
+Best regards,
+{{ doctor.full_name }}

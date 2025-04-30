@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Appointment Approved</title>
+</head>
+<body>
+    <h2>Appointment Approved</h2>
+    <p>Dear {{ patient.full_name }},</p>
+    
+    <p>Your appointment with Dr. {{ doctor.full_name }} has been approved.</p>
+    
+    <p><strong>Appointment Details:</strong></p>
+    <p>Date: {{ appointment.appointment_date|date:"F j, Y" }}</p>
+    <p>Time: {{ appointment.appointment_time }}</p>
+    <p>Doctor: Dr. {{ doctor.full_name }}</p>
+    <p>Specialization: {{ doctor.specialization.name }}</p>
+    
+    <p>Please arrive 15 minutes before your appointment time.</p>
+    
+    <p>Best regards,<br>
+    {{ doctor.full_name }}</p>
+</body>
+</html>
