@@ -162,6 +162,56 @@
                 </ul>
             </div>
 
+            <!-- Recent Prescriptions -->
+            <div class="card shadow-sm mt-4">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">Recent Prescriptions</h5>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Doctor</th>
+                                <th>Diagnosis</th>
+                                <th>Medicines</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for prescription in prescriptions %}
+                            <tr>
+                                <td>{{ prescription.created_at|date:"M d, Y" }}</td>
+                                <td>{{ prescription.appointment.doctor.full_name }}</td>
+                                <td>{{ prescription.diagnosis|default:"-" }}</td>
+                                <td>
+                                    <ul class="list-unstyled mb-0">
+                                        {% for medicine in prescription.prescribedmedicine_set.all %}
+                                        <li class="small">
+                                            {{ medicine.medicine_name }}
+                                            {% if medicine.strength %}({{ medicine.strength }}){% endif %}
+                                            {% if medicine.dosage %} - {{ medicine.dosage }}{% endif %}
+                                            {% if medicine.frequency %} - {{ medicine.frequency }}{% endif %}
+                                        </li>
+                                        {% empty %}
+                                        <li class="small text-muted">No medicines prescribed</li>
+                                        {% endfor %}
+                                    </ul>
+                                </td>
+                                <td>
+                                    <a href="{% url 'patients:view_prescription' prescription.id %}" class="btn btn-sm btn-primary">View Details</a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted">No prescriptions available</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             <!-- Recent Appointments -->
             <div class="card shadow-sm mt-4">
                 <div class="card-header bg-white">

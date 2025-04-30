@@ -393,22 +393,26 @@ def create_prescription(request, appointment_id):
 @login_required
 def view_prescription(request, prescription_id):
     try:
+        # First check if the user is a doctor
+        if not hasattr(request.user, 'doctor'):
+            messages.error(request, 'Access denied. Only doctors can view prescriptions.')
+            return redirect('doctors:manage_appointments')
+        
+        # Get the prescription
         prescription = Prescription.objects.get(
             id=prescription_id,
             appointment__doctor=request.user.doctor
         )
-        prescribed_medicines = prescription.prescribedmedicine_set.all()
         
-        for medicine in prescribed_medicines:
-            if not medicine.medicine:
-                new_medicine = PrescribedMedicine.objects.create(
-                    name=medicine.medicine_name,
-                    generic_name=medicine.generic_name,
-                    dosage_form=medicine.dosage_form,
-                    strength=medicine.strength
-                )
-                medicine.medicine = new_medicine
-                medicine.save()
+        # Get all prescribed medicines and filter out any that might have issues
+        prescribed_medicines = []
+        for medicine in prescription.prescribedmedicine_set.all():
+            try:
+                # Check if the medicine has all required fields
+                if hasattr(medicine, 'medicine_name') and hasattr(medicine, 'strength'):
+                    prescribed_medicines.append(medicine)
+            except AttributeError:
+                continue
         
         return render(request, 'doctors/view_prescription.html', {
             'prescription': prescription,
@@ -418,14 +422,22 @@ def view_prescription(request, prescription_id):
     except Prescription.DoesNotExist:
         messages.error(request, 'Prescription not found')
         return redirect('doctors:manage_appointments')
+    except Doctor.DoesNotExist:
+        messages.error(request, 'Doctor profile not found')
+        return redirect('doctors:manage_appointments')
 
 @login_required
 def edit_prescription(request, prescription_id):
     try:
-        prescription = Prescription.objects.get(
-            id=prescription_id,
-            appointment__doctor=request.user.doctor
-        )
+        appointment = Appointment.objects.get(id=prescription_id, doctor=request.user.doctor)
+        
+        # Check if prescription already exists
+        if not hasattr(appointment, 'prescription'):
+            messages.error(request, 'No prescription exists for this appointment')
+            return redirect('doctors:create_prescription', appointment_id=appointment.id)
+        
+        # Get the prescription
+        prescription = appointment.prescription
         
         if request.method == 'POST':
             diagnosis = request.POST.get('diagnosis', '')
@@ -477,8 +489,11 @@ def edit_prescription(request, prescription_id):
             'prescribed_medicines': prescribed_medicines
         })
         
-    except Prescription.DoesNotExist:
-        messages.error(request, 'Prescription not found')
+    except Appointment.DoesNotExist:
+        messages.error(request, 'Invalid appointment')
+        return redirect('doctors:manage_appointments')
+    except Doctor.DoesNotExist:
+        messages.error(request, 'Doctor profile not found')
         return redirect('doctors:manage_appointments')
 
 @login_required

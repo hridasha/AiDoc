@@ -3,7 +3,7 @@ from doctors.models import Prescription
 from doctors.views import get_available_time_slots
 from .models import Patient
 from django.contrib import messages
-from datetime import datetime
+from datetime import datetime, date
 from django.contrib.auth.decorators import login_required
 from functools import wraps
 from doctors.models import Doctor, Appointment
@@ -86,7 +86,8 @@ def patient_dashboard(request):
     # Get upcoming appointments
     upcoming_appointments = Appointment.objects.filter(
         patient=patient,
-        appointment_date__gte=datetime.now().date()
+        appointment_date__gte=datetime.now().date(),
+        status='scheduled'
     ).order_by('appointment_date', 'appointment_time')[:5]
     
     # Calculate statistics
@@ -114,6 +115,11 @@ def patient_dashboard(request):
     # Get list of available doctors
     doctors = Doctor.objects.filter(is_available=True, is_profile_complete=True)
     
+    # Get recent prescriptions
+    prescriptions = Prescription.objects.filter(
+        appointment__patient=patient
+    ).order_by('-created_at')[:5]
+    
     context = {
         'upcoming_appointments': upcoming_appointments,
         'total_appointments': total_appointments,
@@ -121,7 +127,8 @@ def patient_dashboard(request):
         'pending_appointments': pending_appointments,
         'recent_interactions': recent_interactions,
         'past_appointments': past_appointments,
-        'doctors': doctors
+        'doctors': doctors,
+        'prescriptions': prescriptions
     }
     
     return render(request, "patients/dashboard.html", context)
@@ -214,10 +221,13 @@ def view_appointments(request):
 @login_required
 def view_prescription(request, prescription_id):
     try:
+        # Get the prescription for this patient
         prescription = Prescription.objects.get(
             id=prescription_id,
             appointment__patient=request.user.patient
         )
+        
+        # Get all prescribed medicines
         prescribed_medicines = prescription.prescribedmedicine_set.all()
         
         return render(request, 'patients/view_prescription.html', {
@@ -227,9 +237,25 @@ def view_prescription(request, prescription_id):
         
     except Prescription.DoesNotExist:
         messages.error(request, 'Prescription not found')
-        return redirect('patients:view_appointments')
-    
-    
+        return redirect('patients:dashboard')
+
+@login_required
+def view_prescriptions(request):
+    try:
+        patient = request.user.patient
+        
+        # Get all prescriptions for this patient
+        prescriptions = Prescription.objects.filter(
+            appointment__patient=patient
+        ).order_by('-created_at')
+        
+        return render(request, 'patients/view_prescriptions.html', {
+            'prescriptions': prescriptions
+        })
+    except Patient.DoesNotExist:
+        messages.error(request, 'Patient profile not found')
+        return redirect('patients:patient_profile_setup')
+
 @login_required
 def edit_profile(request):
     patient = Patient.objects.get(user=request.user)
