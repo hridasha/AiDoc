@@ -296,9 +296,11 @@ def manage_appointments(request):
                 if action == 'approve':
                     appointment.status = 'approved'
                     appointment.save()
+                    
+                    # Send email notification
+                    send_appointment_approval_email(appointment)
+                    
                     messages.success(request, 'Appointment request approved successfully!')
-                elif action == 'start_consultation':
-                    return redirect('doctors:video_consultation', appointment_id=appointment_id)
                 elif action == 'reject':
                     appointment.status = 'rejected'
                     appointment.reason_for_rejection = reason
@@ -331,8 +333,8 @@ def manage_appointments(request):
         
     except Doctor.DoesNotExist:
         messages.error(request, 'Access denied')
-        return redirect('doctors:doctor_dashboard')
-    
+        return redirect('doctors:profile_setup')
+
 @login_required
 def create_prescription(request, appointment_id):
     try:
@@ -646,4 +648,38 @@ def approve_appointment(request, appointment_id):
         
     except Appointment.DoesNotExist:
         messages.error(request, 'Appointment not found')
+        return redirect('doctors:manage_appointments')
+
+@login_required
+def video_consultation(request, appointment_id):
+    try:
+        appointment = Appointment.objects.get(
+            id=appointment_id,
+            doctor=request.user.doctor,
+            status='approved'
+        )
+        
+        # Check if the appointment is within the consultation window
+        current_time = datetime.now()
+        consultation_window = timedelta(minutes=30)  # 30-minute consultation window
+        
+        appointment_datetime = datetime.combine(
+            appointment.appointment_date,
+            appointment.appointment_time
+        )
+        
+        if current_time < appointment_datetime - consultation_window:
+            messages.error(request, 'Consultation has not started yet')
+            return redirect('doctors:manage_appointments')
+        
+        if current_time > appointment_datetime + consultation_window:
+            messages.error(request, 'Consultation time has passed')
+            return redirect('doctors:manage_appointments')
+        
+        return render(request, 'doctors/video_consultation.html', {
+            'appointment': appointment
+        })
+        
+    except Appointment.DoesNotExist:
+        messages.error(request, 'Appointment not found or not approved')
         return redirect('doctors:manage_appointments')

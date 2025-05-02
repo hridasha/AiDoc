@@ -78,12 +78,7 @@
                                         <td>{{ appointment.get_status_display }}</td>
                                         <td>
                                             {% if appointment.status == 'approved' %}
-                                            <form method="POST" action="{% url 'doctors:manage_appointments' %}" class="d-inline">
-                                                {% csrf_token %}
-                                                <input type="hidden" name="appointment_id" value="{{ appointment.id }}">
-                                                <input type="hidden" name="action" value="start_consultation">
-                                                <button type="submit" class="btn btn-primary btn-sm">Start Consultation</button>
-                                            </form>
+                                            
                                             <form method="POST" action="{% url 'doctors:manage_appointments' %}" class="d-inline">
                                                 {% csrf_token %}
                                                 <input type="hidden" name="appointment_id" value="{{ appointment.id }}">
