@@ -139,11 +139,17 @@
 
 {% block extra_js %}
 <script>
+document.addEventListener('DOMContentLoaded', function() {
     const chatBox = document.getElementById('chat-box');
     const symptomsInput = document.getElementById('symptoms');
     const sendButton = document.getElementById('send-button');
     const errorMessage = document.getElementById('error-message');
     const doctorsContainer = document.getElementById('doctors-container');
+
+    if (!chatBox || !symptomsInput || !sendButton || !errorMessage || !doctorsContainer) {
+        console.error('One or more required DOM elements not found');
+        return;
+    }
 
     function addMessage(message, isUser = false) {
         const messageDiv = document.createElement('div');
@@ -154,7 +160,10 @@
     }
 
     async function predictDisease() {
+        console.log('Sending message...');
         const symptoms = symptomsInput.value.trim();
+        console.log('Symptoms:', symptoms);
+        
         if (!symptoms) {
             errorMessage.textContent = 'Please enter your symptoms.';
             return;
@@ -170,13 +179,24 @@
                 body: `symptoms=${encodeURIComponent(symptoms)}`
             });
 
+            console.log('Server response status:', response.status);
+            console.log('Server response headers:', response.headers);
+            
             const data = await response.json();
+            console.log('Server response data:', data);
             
             if (data.error) {
                 errorMessage.textContent = data.error;
+                console.error('Server error:', data.error);
                 return;
             }
 
+            if (!data.extracted_symptoms || !data.disease || !data.confidence || !data.specialist) {
+                console.error('Incomplete response data:', data);
+                errorMessage.textContent = 'Received incomplete response from server';
+                return;
+            }
+            
             errorMessage.textContent = '';
             addMessage(symptoms, true);
             
@@ -194,14 +214,15 @@
             // Show doctors with the suggested specialty
             showDoctors(data.specialist);
         } catch (error) {
-            errorMessage.textContent = 'An error occurred while processing your request. Please try again.';
             console.error('Error:', error);
+            errorMessage.textContent = 'An error occurred while processing your request. Please try again.';
         }
     }
 
     async function showDoctors(specialist) {
         try {
             const response = await fetch(`{% url 'doctors:doctor_list' %}?specialist=${encodeURIComponent(specialist)}`);
+            
             if (!response.ok) {
                 const errorData = await response.json();
                 if (errorData.error) {
@@ -227,16 +248,25 @@
                             <div class="doctor-card" data-doctor-id="${doctor.id}">
                                 <div class="doctor-info">
                                     <div class="doctor-name">${doctor.name}</div>
-                                    <div class="doctor-specialty">${doctor.specialist}</div>
+                                    <div class="doctor-specialty">${specialist}</div>
                                     <div class="doctor-experience">${doctor.experience} years experience</div>
                                     <div class="doctor-rating">Rating: ${doctor.rating}/5</div>
                                 </div>
-                                <a href="/patient/appointment/${doctor.id}/" class="btn btn-primary">Book Appointment</a>
+                                <button class="btn btn-primary" onclick="bookAppointment(${doctor.id})">Book Appointment</button>
                             </div>
                         </div>
                     `).join('')}
                 </div>
             `;
+
+            // Add click event listeners to doctor cards
+            document.querySelectorAll('.doctor-card button').forEach(button => {
+                button.addEventListener('click', function() {
+                    const doctorId = this.closest('.doctor-card').dataset.doctorId;
+                    bookAppointment(doctorId);
+                });
+            });
+
         } catch (error) {
             console.error('Error fetching doctors:', error);
             doctorsContainer.innerHTML = '<p class="text-center mt-3">Failed to load doctors. Please try again later.</p>';
@@ -277,7 +307,7 @@
             
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.error || 'Failed to fetch time slots');.
+                throw new Error(errorData.error || 'Failed to fetch time slots');
             }
 
             const data = await response.json();
@@ -380,6 +410,7 @@
         return {{ request.user.is_authenticated|yesno:'true,false' }};
     }
 
+    // Add event listeners after DOM is ready
     sendButton.addEventListener('click', predictDisease);
     symptomsInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
@@ -387,13 +418,6 @@
             predictDisease();
         }
     });
-
-    // Add this to show the appointment modal when a doctor is selected
-    document.querySelectorAll('.doctor-card button').forEach(button => {
-        button.addEventListener('click', function() {
-            const doctorId = this.closest('.doctor-card').dataset.doctorId;
-            bookAppointment(doctorId);
-        });
-    });
+});
 </script>
 {% endblock %}

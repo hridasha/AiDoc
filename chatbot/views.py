@@ -217,35 +217,54 @@ def predict_disease(request):
     if request.method == 'POST':
         try:
             if prediction_system is None:
-                return JsonResponse({'error': 'Disease prediction system is not initialized properly. Please try again later.'}, status=500)
+                print("Error: Prediction system not initialized")
+                return JsonResponse({
+                    'error': 'Disease prediction system is not initialized properly. Please try again later.'
+                }, status=500)
                 
             symptoms = request.POST.get('symptoms', '')
             if not symptoms:
-                return JsonResponse({'error': 'Please provide symptoms'}, status=400)
+                print("Error: No symptoms provided")
+                return JsonResponse({
+                    'error': 'Please provide symptoms'
+                }, status=400)
             
+            print(f"Processing symptoms: {symptoms}")
             result = prediction_system.predict_from_text(symptoms)
             
             if result is None or len(result) != 4:
-                return JsonResponse({'error': 'Could not process the symptoms. Please try again.'}, status=400)
+                print("Error: Invalid prediction result")
+                return JsonResponse({
+                    'error': 'Could not process the symptoms. Please try again.'
+                }, status=400)
                 
             disease, confidence, specialist, extracted_symptoms = result
             
             if isinstance(extracted_symptoms, str):
-                return JsonResponse({'error': extracted_symptoms}, status=400)
+                print("Error: Invalid extracted symptoms format")
+                return JsonResponse({
+                    'error': extracted_symptoms
+                }, status=400)
             
             if disease is None:
-                return JsonResponse({'error': 'Could not predict disease from the given symptoms. Please be more specific.'}, status=400)
+                print("Error: No disease predicted")
+                return JsonResponse({
+                    'error': 'Could not predict disease from the given symptoms. Please be more specific.'
+                }, status=400)
             
             # Save to database if user is logged in
             if request.user.is_authenticated and hasattr(request.user, 'patient'):
-                ChatbotQuery.objects.create(
-                    patient=request.user.patient,
-                    query=symptoms,
-                    response=f"Predicted Disease: {disease}\nConfidence: {confidence:.2f}%\nSuggested Specialist: {specialist}",
-                    disease_predicted=disease,
-                    confidence_score=confidence,
-                    specialist_suggested=specialist
-                )
+                try:
+                    ChatbotQuery.objects.create(
+                        patient=request.user.patient,
+                        query=symptoms,
+                        response=f"Predicted Disease: {disease}\nConfidence: {confidence:.2f}%\nSuggested Specialist: {specialist}",
+                        disease_predicted=disease,
+                        confidence_score=confidence,
+                        specialist_suggested=specialist
+                    )
+                except Exception as e:
+                    print(f"Error saving chat history: {e}")
             
             response = {
                 'success': True,
@@ -255,11 +274,17 @@ def predict_disease(request):
                 'specialist': specialist
             }
             
+            print("Successful prediction:", response)
             return JsonResponse(response)
             
         except Exception as e:
             print(f"Error in predict_disease view: {e}")
-            return JsonResponse({'error': str(e)}, status=500)
+            import traceback
+            print("Traceback:", traceback.format_exc())
+            return JsonResponse({
+                'error': 'An unexpected error occurred. Please try again later.'
+            }, status=500)
     
-    return JsonResponse({'error': 'Only POST requests are allowed'}, status=405)
-
+    return JsonResponse({
+        'error': 'Only POST requests are allowed'
+    }, status=405)
