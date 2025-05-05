@@ -1,1 +1,1 @@
-web: gunicorn docai.wsgi:application
+web: gunicorn docai.wsgi:application --timeout 120

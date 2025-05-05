@@ -102,23 +102,27 @@ class DiseasePredictionSystem:
     
     def load_and_preprocess_data(self, data_path):
         df = pd.read_csv(data_path)
-        symptom_columns = [col for col in df.columns if col.startswith('Symptom_')]
+        # Get all columns except 'Disease' as potential symptom columns
+        symptom_columns = [col for col in df.columns if col != 'Disease']
         
+        symptoms = []
         for col in symptom_columns:
-            df[col] = df[col].str.strip() if df[col].dtype == 'object' else df[col]
+            col_values = df[col].dropna().unique()
+            symptoms.extend([str(s).strip() for s in col_values if pd.notna(s) and str(s).strip() != 'None'])
         
-        symptoms = [symptom for col in symptom_columns for symptom in df[col].dropna().unique()]
-        self.all_symptoms = list(set([s for s in symptoms if pd.notna(s) and s != 'None']))
+        self.all_symptoms = list(set(symptoms))
         
+        # Create a DataFrame with all unique symptoms as columns
         X = pd.DataFrame(0, index=range(len(df)), columns=self.all_symptoms)
+        
+        # Fill the symptom matrix
         for index, row in df.iterrows():
             for col in symptom_columns:
-                symptom = row[col]
-                if pd.notna(symptom) and symptom != 'None':
-                    X.loc[index, symptom.strip()] = 1
+                symptom = str(row[col]).strip()
+                if pd.notna(symptom) and symptom != 'None' and symptom in self.all_symptoms:
+                    X.loc[index, symptom] = 1
         
         y = self.label_encoder.fit_transform(df['Disease'])
-        
         return X, y
     
     def train_models(self, X, y):
