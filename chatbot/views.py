@@ -18,9 +18,11 @@ import warnings
 import os
 from .models import ChatbotQuery
 from patients.models import Patient
+from doctors.models import Doctor, Appointment, Specialization
 warnings.filterwarnings('ignore')
 from django.core.paginator import Paginator
 from django.contrib.auth.decorators import login_required
+import json
 
 class SymptomExtractor:
     def __init__(self):
@@ -117,7 +119,7 @@ class DiseasePredictionSystem:
                 if pd.notna(symptom) and symptom != 'None':
                     X.loc[index, symptom.strip()] = 1
                     # print(x.loc[index, symptom.strip()])
-                    print(symptom.strip())
+                    # print(symptom.strip())
                     # X.loc[index, symptom.strip()] = 0
         
         y = self.label_encoder.fit_transform(df['Disease'])
@@ -214,6 +216,230 @@ def chat_history(request):
     return render(request, 'chatbot/chat_history.html', {
         'page_obj': page_obj
     })
+
+@login_required
+def get_doctors_by_specialty(request):
+    try:
+        specialty = request.GET.get('specialty', '').strip()
+        if not specialty:
+            return JsonResponse({'error': 'Specialty parameter is required'}, status=400)
+
+        # Get doctors with the matching specialty
+        doctors = Doctor.objects.filter(
+            specialization__name__iexact=specialty,
+            is_available=True,
+            is_profile_complete=True
+        ).select_related('specialization')
+
+        # Prepare doctor data
+        doctor_list = []
+        for doctor in doctors:
+            doctor_list.append({
+                'id': doctor.id,
+                'name': doctor.full_name,
+                'specialty': doctor.specialization.name,
+                'experience': doctor.experience,
+                'rating': round(doctor.total_reviews / 5, 1) if doctor.total_reviews > 0 else 0,
+                'fee': doctor.fee
+            })
+
+        return JsonResponse({'doctors': doctor_list})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@login_required
+@csrf_exempt
+def get_doctors(request):
+    specialist = request.GET.get('specialist')
+    if not specialist:
+        return JsonResponse({'error': 'Specialist parameter is required'}, status=400)
+    
+    try:
+        # Get the Specialization object first
+        specialization = Specialization.objects.filter(name__iexact=specialist).first()
+        if not specialization:
+            return JsonResponse({'doctors': []})  # Return empty list if no specialization found
+            
+        doctors = Doctor.objects.filter(
+            specialization=specialization,
+            is_available=True
+        )
+        
+        doctor_list = []
+        for doctor in doctors:
+            # Calculate average rating if total_reviews > 0
+            average_rating = round(doctor.total_reviews / 5, 1) if doctor.total_reviews > 0 else 0
+            
+            doctor_list.append({
+                'id': doctor.id,
+                'name': f"Dr. {doctor.full_name}",
+                'specialty': specialization.name,
+                'experience': doctor.experience or 0,
+                'rating': average_rating,
+                'fee': float(doctor.fee) if doctor.fee else 0
+            })
+        
+        return JsonResponse({'doctors': doctor_list})
+    except Exception as e:
+        print(f"Error in get_doctors: {str(e)}")  # Add logging for debugging
+        return JsonResponse({'error': str(e)}, status=500)
+
+@login_required
+@csrf_exempt
+def get_time_slots(request):
+    doctor_id = request.GET.get('doctor_id')
+    date = request.GET.get('date')
+    
+    if not doctor_id or not date:
+        return JsonResponse({'error': 'Doctor ID and date are required'}, status=400)
+    
+    try:
+        doctor = Doctor.objects.get(id=doctor_id)
+        existing_appointments = Appointment.objects.filter(
+            doctor=doctor,
+            date=date
+        ).values_list('time_slot', flat=True)
+        
+        # Get available time slots for the doctor
+        available_slots = doctor.get_available_time_slots(date)
+        
+        # Remove time slots that are already booked
+        available_slots = [slot for slot in available_slots if slot not in existing_appointments]
+        
+        return JsonResponse({'time_slots': available_slots})
+    except Doctor.DoesNotExist:
+        return JsonResponse({'error': 'Doctor not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@login_required
+@csrf_exempt
+def book_doctor_appointment(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Invalid request method'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        doctor_id = data.get('doctor_id')
+        date = data.get('date')
+        time = data.get('time')
+        symptoms = data.get('symptoms')
+        
+        if not all([doctor_id, date, time, symptoms]):
+            return JsonResponse({'error': 'All fields are required'}, status=400)
+        
+        doctor = Doctor.objects.get(id=doctor_id)
+        patient = request.user.patient
+        
+        # Check if time slot is available
+        existing_appointment = Appointment.objects.filter(
+            doctor=doctor,
+            date=date,
+            time_slot=time
+        ).exists()
+        
+        if existing_appointment:
+            return JsonResponse({'error': 'This time slot is already booked'}, status=400)
+        
+        # Create appointment
+        appointment = Appointment.objects.create(
+            doctor=doctor,
+            patient=patient,
+            date=date,
+            time_slot=time,
+            symptoms=symptoms
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Appointment booked successfully',
+            'appointment_id': appointment.id
+        })
+        
+    except Doctor.DoesNotExist:
+        return JsonResponse({'error': 'Doctor not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@login_required
+def book_doctor_appointment(request):
+    if request.method == 'POST':
+        try:
+            doctor_id = request.POST.get('doctor_id')
+            appointment_date = request.POST.get('appointment_date')
+            appointment_time = request.POST.get('appointment_time')
+            symptoms = request.POST.get('symptoms')
+            
+            if not all([doctor_id, appointment_date, appointment_time, symptoms]):
+                return JsonResponse({
+                    'error': 'All fields are required',
+                    'success': False
+                }, status=400)
+
+            try:
+                doctor = Doctor.objects.get(id=doctor_id)
+                patient = Patient.objects.get(user=request.user)
+
+                # Check if patient profile is complete
+                if not patient.is_profile_complete:
+                    return JsonResponse({
+                        'error': 'Please complete your patient profile before booking an appointment.',
+                        'success': False
+                    }, status=400)
+
+                # Check if time slot is available
+                existing_appointments = Appointment.objects.filter(
+                    doctor=doctor,
+                    appointment_date=appointment_date,
+                    appointment_time=appointment_time
+                )
+
+                if existing_appointments.exists():
+                    return JsonResponse({
+                        'error': 'Selected time slot is not available',
+                        'success': False
+                    }, status=400)
+
+                # Create appointment
+                appointment = Appointment.objects.create(
+                    patient=patient,
+                    doctor=doctor,
+                    appointment_date=appointment_date,
+                    appointment_time=appointment_time,
+                    symptoms=symptoms,
+                    status='pending'
+                )
+
+                return JsonResponse({
+                    'success': True,
+                    'message': 'Appointment request sent successfully. Please wait for the doctor to confirm.',
+                    'appointment_id': appointment.id
+                })
+
+            except Doctor.DoesNotExist:
+                return JsonResponse({
+                    'error': 'Doctor not found',
+                    'success': False
+                }, status=404)
+            except Patient.DoesNotExist:
+                return JsonResponse({
+                    'error': 'Patient profile not found. Please complete your profile first.',
+                    'success': False
+                }, status=404)
+
+        except Exception as e:
+            print(f"Error in book_doctor_appointment: {e}")
+            import traceback
+            print("Traceback:", traceback.format_exc())
+            return JsonResponse({
+                'error': 'An unexpected error occurred. Please try again later.',
+                'success': False
+            }, status=500)
+
+    return JsonResponse({
+        'error': 'Only POST requests are allowed',
+        'success': False
+    }, status=405)
 
 @csrf_exempt
 def predict_disease(request):
