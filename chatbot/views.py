@@ -115,8 +115,10 @@ class DiseasePredictionSystem:
             for col in symptom_columns:
                 symptom = row[col]
                 if pd.notna(symptom) and symptom != 'None':
-                    # X.loc[index, symptom.strip()] = 1
-                    X.loc[index, symptom.strip()] = 0
+                    X.loc[index, symptom.strip()] = 1
+                    # print(x.loc[index, symptom.strip()])
+                    print(symptom.strip())
+                    # X.loc[index, symptom.strip()] = 0
         
         y = self.label_encoder.fit_transform(df['Disease'])
         
