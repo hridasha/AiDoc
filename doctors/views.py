@@ -204,7 +204,11 @@ def book_appointment(request):
 
 @login_required
 def edit_profile(request):
-    doctor = Doctor.objects.get(user=request.user)
+    try:
+        doctor = Doctor.objects.get(user=request.user)
+    except Doctor.DoesNotExist:
+        messages.error(request, 'Doctor profile not found')
+        return redirect('doctors:doctor_dashboard')
     
     if request.method == 'POST':
         form = DoctorProfileForm(request.POST, request.FILES, instance=doctor)
@@ -212,6 +216,8 @@ def edit_profile(request):
             form.save()
             messages.success(request, 'Your profile has been updated successfully.')
             return redirect('doctors:doctor_dashboard')
+        else:
+            messages.error(request, 'Please correct the errors below.')
     else:
         form = DoctorProfileForm(instance=doctor)
     

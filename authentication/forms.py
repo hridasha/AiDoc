@@ -8,8 +8,7 @@ class RegisterForm(UserCreationForm):
         choices=[
             ('', 'Select your role'),
             ('patient', 'Patient'),
-            ('doctor', 'Doctor'),
-            ('medical_store', 'Medical Store')
+            ('doctor', 'Doctor')
         ],
         required=True
     )

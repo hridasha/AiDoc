@@ -1,5 +1,7 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 from .forms import RegisterForm, LoginForm
 from .models import CustomUser
 
@@ -16,6 +18,18 @@ def register(request):
 
 def user_login(request):
     print("Login view called")
+    # Redirect authenticated users to their dashboard
+    if request.user.is_authenticated:
+        print(f"User {request.user.username} is already logged in")
+        if request.user.role == 'patient':
+            return redirect('patients:dashboard')
+        elif request.user.role == 'doctor':
+            return redirect('doctors:doctor_dashboard')
+        elif request.user.role == 'medical_store':
+            return redirect('medical_store:dashboard')
+        else:
+            return redirect('user_login')
+    
     if request.method == "POST":
         print("POST request received")
         form = LoginForm(request.POST)
