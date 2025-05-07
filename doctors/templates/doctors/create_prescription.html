@@ -7,6 +7,7 @@
             <h2>Create Prescription for {{ appointment.patient.full_name }}</h2>
             <form method="POST" action="{% url 'doctors:create_prescription' appointment.id %}">
                 {% csrf_token %}
+                <input type="hidden" name="medicine_count" id="medicine_count" value="1">
                 <div class="card">
                     <div class="card-body">
                         <div class="mb-3">
@@ -144,11 +145,14 @@
         `;
         section.appendChild(newRow);
         medicineCount++;
+        document.getElementById('medicine_count').value = medicineCount;
     });
 
     document.addEventListener('click', function(e) {
         if (e.target.classList.contains('remove-medicine')) {
             e.target.closest('.medicine-row').remove();
+            medicineCount--;
+            document.getElementById('medicine_count').value = medicineCount;
         }
     });
 </script>

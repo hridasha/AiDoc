@@ -65,6 +65,8 @@
                                         <label class="form-label">Instructions</label>
                                         <input type="text" class="form-control" name="instructions_{{ forloop.counter0 }}" value="{{ medicine.instructions }}" placeholder="Additional Instructions">
                                     </div>
+                                    <input type="hidden" name="medicine_id_{{ forloop.counter0 }}" value="{{ medicine.id }}">
+                                    <button type="button" class="btn btn-danger remove-medicine">Remove</button>
                                 </div>
                             </div>
                             {% endfor %}
@@ -138,12 +140,23 @@
                     <label class="form-label">Instructions</label>
                     <input type="text" class="form-control" name="instructions_${medicineCount}" placeholder="Additional Instructions">
                 </div>
+                <input type="hidden" name="medicine_id_${medicineCount}" value="0">
+                <button type="button" class="btn btn-danger remove-medicine">Remove</button>
             </div>
         `;
         section.appendChild(newRow);
         medicineCount++;
         // Update the hidden medicine_count field
         document.getElementById('medicine_count').value = medicineCount;
+    });
+
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-medicine')) {
+            e.target.closest('.medicine-row').remove();
+            medicineCount--;
+            // Update the hidden medicine_count field
+            document.getElementById('medicine_count').value = medicineCount;
+        }
     });
 </script>
 {% endblock %}

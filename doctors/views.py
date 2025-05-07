@@ -303,8 +303,6 @@ def manage_appointments(request):
                     appointment.status = 'approved'
                     appointment.save()
                     
-                    # Send email notification
-                    send_appointment_approval_email(appointment)
                     
                     messages.success(request, 'Appointment request approved successfully!')
                 elif action == 'reject':
@@ -437,15 +435,14 @@ def view_prescription(request, prescription_id):
 @login_required
 def edit_prescription(request, prescription_id):
     try:
-        appointment = Appointment.objects.get(id=prescription_id, doctor=request.user.doctor)
+        # Get the prescription first
+        prescription = Prescription.objects.get(id=prescription_id)
+        appointment = prescription.appointment
         
-        # Check if prescription already exists
-        if not hasattr(appointment, 'prescription'):
-            messages.error(request, 'No prescription exists for this appointment')
-            return redirect('doctors:create_prescription', appointment_id=appointment.id)
-        
-        # Get the prescription
-        prescription = appointment.prescription
+        # Verify the doctor owns this appointment
+        if appointment.doctor != request.user.doctor:
+            messages.error(request, 'You do not have permission to edit this prescription')
+            return redirect('doctors:manage_appointments')
         
         if request.method == 'POST':
             diagnosis = request.POST.get('diagnosis', '')
@@ -456,14 +453,19 @@ def edit_prescription(request, prescription_id):
             prescription.notes = notes
             prescription.save()
             
-            # Delete existing medicines
-            prescription.prescribedmedicine_set.all().delete()
-            
             # Get the total number of medicines from the form
             medicine_count = int(request.POST.get('medicine_count', 0))
             
-            # Add new medicines
+            # Delete existing medicines that are not being updated
+            existing_medicines = prescription.prescribedmedicine_set.all()
+            existing_ids = [int(request.POST.get(f'medicine_id_{i}', 0)) for i in range(medicine_count)]
+            for medicine in existing_medicines:
+                if medicine.id not in existing_ids:
+                    medicine.delete()
+            
+            # Update or create medicines
             for i in range(medicine_count):
+                medicine_id = request.POST.get(f'medicine_id_{i}', 0)
                 medicine_name = request.POST.get(f'medicine_name_{i}')
                 generic_name = request.POST.get(f'generic_name_{i}', '')
                 dosage_form = request.POST.get(f'dosage_form_{i}')
@@ -473,8 +475,27 @@ def edit_prescription(request, prescription_id):
                 duration = request.POST.get(f'duration_{i}')
                 instructions = request.POST.get(f'instructions_{i}', '')
                 
-                # Only create medicine if all required fields are present
-                if medicine_name and dosage_form and strength and dosage and frequency and duration:
+                # Check if all required fields are present
+                if not all([medicine_name, dosage_form, strength, dosage, frequency, duration]):
+                    continue
+                
+                if medicine_id and medicine_id != '0':
+                    # Update existing medicine
+                    try:
+                        medicine = PrescribedMedicine.objects.get(id=medicine_id)
+                        medicine.medicine_name = medicine_name
+                        medicine.generic_name = generic_name
+                        medicine.dosage_form = dosage_form
+                        medicine.strength = strength
+                        medicine.dosage = dosage
+                        medicine.frequency = frequency
+                        medicine.duration = duration
+                        medicine.instructions = instructions
+                        medicine.save()
+                    except PrescribedMedicine.DoesNotExist:
+                        continue
+                else:
+                    # Create new medicine
                     PrescribedMedicine.objects.create(
                         prescription=prescription,
                         medicine_name=medicine_name,
@@ -497,8 +518,8 @@ def edit_prescription(request, prescription_id):
             'prescribed_medicines': prescribed_medicines
         })
         
-    except Appointment.DoesNotExist:
-        messages.error(request, 'Invalid appointment')
+    except Prescription.DoesNotExist:
+        messages.error(request, 'Prescription not found')
         return redirect('doctors:manage_appointments')
     except Doctor.DoesNotExist:
         messages.error(request, 'Doctor profile not found')
