@@ -167,48 +167,58 @@
                 <div class="card-header bg-white">
                     <h5 class="mb-0">Recent Prescriptions</h5>
                 </div>
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Doctor</th>
-                                <th>Diagnosis</th>
-                                <th>Medicines</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for prescription in prescriptions %}
-                            <tr>
-                                <td>{{ prescription.created_at|date:"M d, Y" }}</td>
-                                <td>{{ prescription.appointment.doctor.full_name }}</td>
-                                <td>{{ prescription.diagnosis|default:"-" }}</td>
-                                <td>
-                                    <ul class="list-unstyled mb-0">
+                <div class="card-body">
+                    {% if prescriptions %}
+                        {% for prescription in prescriptions %}
+                        <div class="card mb-3 border-0">
+                            <div class="card-body p-3">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <h6 class="mb-1">{{ prescription.appointment.doctor.full_name }}</h6>
+                                        <p class="mb-2 text-muted small">{{ prescription.created_at|date:"M d, Y" }}</p>
+                                        {% if prescription.diagnosis %}
+                                        <p class="mb-2"><strong>Diagnosis:</strong> {{ prescription.diagnosis }}</p>
+                                        {% endif %}
+                                        {% if prescription.notes %}
+                                        <p class="mb-2"><strong>Notes:</strong> {{ prescription.notes }}</p>
+                                        {% endif %}
+                                    </div>
+
+                                </div>
+                                
+                                {% if prescription.prescribedmedicine_set.exists %}
+                                <div class="mt-3">
+                                    <h6 class="mb-2">Medicines:</h6>
+                                    <div class="row">
                                         {% for medicine in prescription.prescribedmedicine_set.all %}
-                                        <li class="small">
-                                            {{ medicine.medicine_name }}
-                                            {% if medicine.strength %}({{ medicine.strength }}){% endif %}
-                                            {% if medicine.dosage %} - {{ medicine.dosage }}{% endif %}
-                                            {% if medicine.frequency %} - {{ medicine.frequency }}{% endif %}
-                                        </li>
-                                        {% empty %}
-                                        <li class="small text-muted">No medicines prescribed</li>
+                                        <div class="col-md-6 mb-2">
+                                            <div class="card border-0 p-2">
+                                                <div class="d-flex justify-content-between align-items-start">
+                                                    <div>
+                                                        <h6 class="mb-1">{{ medicine.medicine_name }}</h6>
+                                                        <p class="mb-1 small text-muted">{{ medicine.dosage_form }}{% if medicine.strength %} ({{ medicine.strength }}){% endif %}</p>
+                                                        <p class="mb-0 small text-muted">{{ medicine.dosage }} - {{ medicine.frequency }} - {{ medicine.duration }}</p>
+                                                        {% if medicine.instructions %}
+                                                        <p class="mb-0 small text-muted">{{ medicine.instructions }}</p>
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
                                         {% endfor %}
-                                    </ul>
-                                </td>
-                                <td>
-                                    <a href="{% url 'patients:view_prescription' prescription.id %}" class="btn btn-sm btn-primary">View Details</a>
-                                </td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="5" class="text-center text-muted">No prescriptions available</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                                    </div>
+                                </div>
+                                {% else %}
+                                <p class="text-muted small">No medicines prescribed</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center text-muted py-4">
+                            <p>No prescriptions available</p>
+                        </div>
+                    {% endif %}
                 </div>
             </div>
 
@@ -217,23 +227,38 @@
                 <div class="card-header bg-white">
                     <h5 class="mb-0">Recent Appointments</h5>
                 </div>
-                <ul class="list-group list-group-flush">
+                <div class="card-body">
                     {% if recent_appointments %}
                         {% for appointment in recent_appointments %}
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="mb-1">{{ appointment.doctor.full_name }}</h6>
-                                <p class="mb-0 text-muted small">{{ appointment.appointment_date|date:"M d, Y" }} at {{ appointment.appointment_time }} | {{ appointment.doctor.specialization.name }}</p>
+                        <div class="card mb-3 border-0">
+                            <div class="card-body p-3">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <h6 class="mb-1">{{ appointment.doctor.full_name }}</h6>
+                                        <p class="mb-2 text-muted small">{{ appointment.appointment_date|date:"M d, Y" }} at {{ appointment.appointment_time }}</p>
+                                        <p class="mb-2"><strong>Specialization:</strong> {{ appointment.doctor.specialization.name }}</p>
+                                        {% if appointment.symptoms %}
+                                        <p class="mb-2"><strong>Symptoms:</strong> {{ appointment.symptoms }}</p>
+                                        {% endif %}
+                                        {% if appointment.message %}
+                                        <p class="mb-2"><strong>Message:</strong> {{ appointment.message }}</p>
+                                        {% endif %}
+                                    </div>
+                                    <div>
+                                        <span class="badge {% if appointment.status == 'completed' %}bg-success{% elif appointment.status == 'cancelled' %}bg-danger{% else %}bg-secondary{% endif %} text-uppercase">
+                                            {{ appointment.get_status_display }}
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
-                            <span class="badge {% if appointment.status == 'completed' %}bg-success{% elif appointment.status == 'cancelled' %}bg-danger{% else %}bg-secondary{% endif %} text-uppercase">
-                                {{ appointment.get_status_display }}
-                            </span>
-                        </li>
+                        </div>
                         {% endfor %}
                     {% else %}
-                        <li class="list-group-item text-center text-muted">No recent appointments</li>
+                        <div class="text-center text-muted py-4">
+                            <p>No recent appointments</p>
+                        </div>
                     {% endif %}
-                </ul>
+                </div>
             </div>
 
             <!-- Chatbot -->
